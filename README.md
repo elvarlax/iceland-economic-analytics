@@ -55,15 +55,19 @@ A master Data Factory pipeline runs Bronze → Silver → Gold in sequence. With
 <div align="center">
 
 **Master Pipeline**
+
 ![Master Pipeline](assets/master_pipeline.png)
 
 **Bronze Pipeline**
+
 ![Bronze Pipeline](assets/bronze_pipeline.png)
 
 **Silver Pipeline**
+
 ![Silver Pipeline](assets/silver_pipeline.png)
 
 **Gold Pipeline**
+
 ![Gold Pipeline](assets/gold_pipeline.png)
 
 </div>
