@@ -10,7 +10,7 @@ Built as a DP-700 (Microsoft Fabric Analytics Engineer) portfolio project.
 
 <div align="center">
 
-![Iceland Economic Dashboard](assets/Iceland_Economic_Dashboard_2024-2026.png)
+![Iceland Economic Dashboard](assets/Iceland_Economic_Dashboard_2022-2026.png)
 
 </div>
 
@@ -32,25 +32,35 @@ Three public data sources are combined to tell that story:
 
 Data flows through three layers stored as Delta tables in a Microsoft Fabric Lakehouse:
 
-```
-Bronze (raw)               Silver (cleaned)                  Gold (aggregated)
-──────────────────         ────────────────────────          ──────────────────────
-yahoo_finance_raw    →     exchange_rates              →
-central_bank_raw     →     central_bank_indicators     →     economic_dashboard
-statistics_gdp       →     gdp_indicators              →
+```mermaid
+flowchart LR
+    YF[Yahoo Finance API] --> BYF[bronze.yahoo_finance_raw]
+    CB[Seðlabanki XML API] --> BCB[bronze.central_bank_raw]
+    HA[Hagstofa PX-Web API] --> BST[bronze.statistics_iceland_gdp]
+
+    BYF --> SER[silver.exchange_rates]
+    BCB --> SCB[silver.central_bank_indicators]
+    BST --> SGD[silver.gdp_indicators]
+
+    SER --> GED[gold.economic_dashboard]
+    SCB --> GED
+    SGD --> GED
+    GED --> SM[Semantic Model]
+    DIM[gold.dim_date] --> SM
+    SM --> PBI[Power BI Report]
 ```
 
 | Layer | Purpose |
 |---|---|
 | **Bronze** | Raw data ingested as-is from each API |
 | **Silver** | Cleaned, typed, and enriched — one table per source |
-| **Gold** | Single monthly table joining all three sources for reporting |
+| **Gold** | `economic_dashboard` — monthly fact table for reporting. `dim_date` — daily date dimension for time intelligence |
 
 ---
 
 ## Pipeline Orchestration
 
-A master Data Factory pipeline runs Bronze → Silver → Gold in sequence. Within each pipeline, 30-second wait activities are placed between notebook executions to handle Microsoft Fabric Trial capacity limits.
+A master Data Factory pipeline runs Bronze → Silver → Gold in sequence. Within each pipeline, 30-second wait activities are placed between notebook executions to handle Microsoft Fabric Trial capacity limits. This is a Trial capacity workaround and would be removed on a production F2+ capacity.
 
 <div align="center">
 
@@ -89,6 +99,7 @@ A master Data Factory pipeline runs Bronze → Silver → Gold in sequence. With
 ```
 notebooks/
 ├── bronze/
+│   ├── bronze_setup.ipynb            # Creates Bronze, Silver, and Gold schemas
 │   ├── bronze_yahoo_finance.ipynb    # yfinance API → bronze.yahoo_finance_raw
 │   ├── bronze_central_bank.ipynb     # Seðlabanki XML API → bronze.central_bank_raw
 │   └── bronze_statistics.ipynb       # Hagstofa REST API → bronze.statistics_iceland_gdp
@@ -97,7 +108,8 @@ notebooks/
 │   ├── silver_central_bank.ipynb     # Extract policy rate + CPI → silver.central_bank_indicators
 │   └── silver_statistics.ipynb       # Add quarter date → silver.gdp_indicators
 └── gold/
-    └── gold_economic_dashboard.ipynb # Monthly join of all Silver tables → gold.economic_dashboard
+    ├── gold_economic_dashboard.ipynb # Monthly join of all Silver tables → gold.economic_dashboard
+    └── gold_dim_date.ipynb           # Generates daily date spine → gold.dim_date
 ```
 
 ---
@@ -121,13 +133,25 @@ notebooks/
 
 ---
 
+## Design Decisions
+
+**MERGE over overwrite** — All Silver and Gold notebooks use MERGE INTO instead of overwrite. This makes every pipeline run idempotent and safe to retry without duplicating or losing data.
+
+**SQL for transformations** — All transformation logic in Silver and Gold is written in Spark SQL. Python handles orchestration, control flow, and writes. This keeps the separation of concerns clean and makes the logic easier to read and audit.
+
+**Validation at Bronze** — Data quality checks sit at the API boundary in Bronze, before data enters the Lakehouse. By the time data reaches Silver it has already been validated, so Silver and Gold stay focused on transformation.
+
+**dim_date in Gold** — A dedicated date dimension table enables proper time intelligence in the Semantic Model without relying on Power BI's auto date/time feature, which is disabled in enterprise environments.
+
+---
+
 ## Tech Stack
 
 **Microsoft Fabric**
 - **Lakehouse** — Central storage with Bronze, Silver, and Gold schemas on OneLake
 - **Notebooks** — PySpark notebooks for data ingestion and transformation at each layer
 - **Data Factory Pipelines** — Orchestrates notebook execution across Bronze → Silver → Gold
-- **Semantic Model** — Built on top of the Gold table with a date column for time intelligence in Power BI
+- **Semantic Model** — Built on top of `gold.economic_dashboard` and `gold.dim_date`. The `dim_date` table enables time intelligence via an explicit date relationship rather than Power BI's auto date/time feature.
 - **Power BI Report** — Interactive dashboard with auto-refresh via the Fabric Semantic Model
 
 **Languages & Libraries**
