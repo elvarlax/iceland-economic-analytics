@@ -115,7 +115,8 @@ notebooks/
     ├── gold_dim_date.ipynb           # Daily date spine (2022–2030) → gold.dim_date
     ├── gold_dim_indicator.ipynb      # Economic indicator metadata → gold.dim_indicator
     ├── gold_dim_source.ipynb         # Data source metadata → gold.dim_source
-    └── gold_dim_geography.ipynb      # Geography dimension → gold.dim_geography
+    ├── gold_dim_geography.ipynb      # Geography dimension → gold.dim_geography
+    └── gold_dq_checks.ipynb          # Data quality assertions — runs after every Gold pipeline execution
 ```
 
 ---
