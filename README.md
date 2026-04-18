@@ -2,7 +2,7 @@
 
 A Medallion data pipeline on **Microsoft Fabric** that pulls real Icelandic economic data from three public APIs, transforms it through Bronze → Silver → Gold layers, and serves it as a Power BI dashboard.
 
-Built as a DP-700 (Microsoft Fabric Analytics Engineer) portfolio project.
+Built as a portfolio project for the **Microsoft Certified: Fabric Data Engineer Associate** (DP-700) certification.
 
 ---
 
@@ -18,7 +18,7 @@ Built as a DP-700 (Microsoft Fabric Analytics Engineer) portfolio project.
 
 ## Background
 
-Iceland went through a full economic cycle between 2022 and 2025 — a post-pandemic tourism boom, contraction in 2024, and an aggressive Central Bank rate response. It is a small, open economy where the signals between monetary policy, inflation, exchange rates, and GDP are unusually direct and visible.
+Iceland went through a full economic cycle between 2022 and 2026 — a post-pandemic tourism boom, contraction in 2024, and an aggressive Central Bank rate response. It is a small, open economy where the signals between monetary policy, inflation, exchange rates, and GDP are unusually direct and visible.
 
 Three public data sources are combined to tell that story:
 
@@ -130,10 +130,13 @@ notebooks/
 | `policy_rate` | double | End-of-month Central Bank policy rate (%) |
 | `cpi` | double | CPI year-on-year inflation (%) |
 | `gdp_yoy_growth` | double | Quarterly GDP YoY growth (%) |
+| `refreshed_at` | timestamp | When this row was last written by the pipeline |
 
 ---
 
 ## Design Decisions
+
+**Incremental Bronze load** — All three Bronze notebooks load incrementally. Yahoo Finance and Central Bank read the `MAX(date)` watermark from the existing table and fetch only new dates, then append. Statistics Iceland fetches the full dataset from the API on every run (the PX-Web API has no date filter parameter), but filters to new quarters before appending. On first run each notebook falls back to a full load from `2022-01-01`.
 
 **MERGE over overwrite** — All Silver and Gold notebooks use MERGE INTO instead of overwrite. This makes every pipeline run idempotent and safe to retry without duplicating or losing data.
 
@@ -151,7 +154,7 @@ notebooks/
 - **Lakehouse** — Central storage with Bronze, Silver, and Gold schemas on OneLake
 - **Notebooks** — PySpark notebooks for data ingestion and transformation at each layer
 - **Data Factory Pipelines** — Orchestrates notebook execution across Bronze → Silver → Gold
-- **Semantic Model** — Built on top of `gold.economic_dashboard` and `gold.dim_date`. The `dim_date` table enables time intelligence via an explicit date relationship rather than Power BI's auto date/time feature.
+- **Semantic Model** — Built on top of `gold.economic_dashboard` and `gold.dim_date` using Direct Lake mode, which reads Delta files directly from OneLake without importing data. The `dim_date` table enables time intelligence via an explicit date relationship rather than Power BI's auto date/time feature.
 - **Power BI Report** — Interactive dashboard with auto-refresh via the Fabric Semantic Model
 
 **Languages & Libraries**
