@@ -1,0 +1,59 @@
+// Raw CPI value is an index level (~665), not a rate.
+// SAMEPERIODLASTYEAR converts it to a true year-on-year % change.
+CPI Inflation (YoY) =
+VAR _currentIndex =
+    CALCULATE(
+        AVERAGE('fact_monthly_economics'[value]),
+        'dim_indicator'[indicator_code] = "cpi"
+    )
+VAR _lastYearIndex =
+    CALCULATE(
+        AVERAGE('fact_monthly_economics'[value]),
+        'dim_indicator'[indicator_code] = "cpi",
+        SAMEPERIODLASTYEAR('dim_date'[full_date])
+    )
+RETURN DIVIDE(_currentIndex - _lastYearIndex, _lastYearIndex)
+
+// Stored as a percentage (e.g. 9.25). Divide by 100 for Power BI percentage formatting.
+Policy Rate =
+DIVIDE(
+    CALCULATE(
+        AVERAGE('fact_monthly_economics'[value]),
+        'dim_indicator'[indicator_code] = "policy_rate"
+    ),
+    100
+)
+
+// Stored as a percentage (e.g. 4.70). Divide by 100 for Power BI percentage formatting.
+GDP Growth (YoY) =
+DIVIDE(
+    CALCULATE(
+        AVERAGE('fact_monthly_economics'[value]),
+        'dim_indicator'[indicator_code] = "gdp_yoy_growth"
+    ),
+    100
+)
+
+EUR/USD Rate =
+CALCULATE(
+    AVERAGE('fact_monthly_economics'[value]),
+    'dim_indicator'[indicator_code] = "avg_eurusd"
+)
+
+ISK/EUR Rate =
+CALCULATE(
+    AVERAGE('fact_monthly_economics'[value]),
+    'dim_indicator'[indicator_code] = "avg_iskeur"
+)
+
+ISK/USD Rate =
+CALCULATE(
+    AVERAGE('fact_monthly_economics'[value]),
+    'dim_indicator'[indicator_code] = "avg_iskusd"
+)
+
+OMX Index =
+CALCULATE(
+    AVERAGE('fact_monthly_economics'[value]),
+    'dim_indicator'[indicator_code] = "avg_omx"
+)
