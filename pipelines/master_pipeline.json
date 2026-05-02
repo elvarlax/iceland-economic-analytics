@@ -1,0 +1,166 @@
+{
+    "name": "master_pipeline",
+    "objectId": "a917f8ef-1e7f-4aac-ad15-2eb51d8b1d09",
+    "properties": {
+        "activities": [
+            {
+                "name": "bronze_pipeline",
+                "type": "InvokePipeline",
+                "dependsOn": [],
+                "policy": {
+                    "timeout": "0.12:00:00",
+                    "retry": 0,
+                    "retryIntervalInSeconds": 30,
+                    "secureOutput": false,
+                    "secureInput": false
+                },
+                "typeProperties": {
+                    "waitOnCompletion": true,
+                    "operationType": "InvokeFabricPipeline",
+                    "pipelineId": "824e7ed2-4571-4078-bc42-54a760fb9b82",
+                    "workspaceId": "f428900f-2885-4f12-a5e1-c8aeb83338be"
+                },
+                "externalReferences": {
+                    "connection": "d7f03fd7-786b-4527-bf2f-d8a9349b690e"
+                }
+            },
+            {
+                "name": "silver_pipeline",
+                "type": "InvokePipeline",
+                "dependsOn": [
+                    {
+                        "activity": "bronze_pipeline",
+                        "dependencyConditions": [
+                            "Succeeded"
+                        ]
+                    }
+                ],
+                "policy": {
+                    "timeout": "0.12:00:00",
+                    "retry": 0,
+                    "retryIntervalInSeconds": 30,
+                    "secureOutput": false,
+                    "secureInput": false
+                },
+                "typeProperties": {
+                    "waitOnCompletion": true,
+                    "operationType": "InvokeFabricPipeline",
+                    "pipelineId": "b1c4d913-8f7c-4d5b-af54-61ef4a4a48ca",
+                    "workspaceId": "f428900f-2885-4f12-a5e1-c8aeb83338be"
+                },
+                "externalReferences": {
+                    "connection": "d7f03fd7-786b-4527-bf2f-d8a9349b690e"
+                }
+            },
+            {
+                "name": "gold_dim_pipeline",
+                "type": "InvokePipeline",
+                "dependsOn": [
+                    {
+                        "activity": "silver_pipeline",
+                        "dependencyConditions": [
+                            "Succeeded"
+                        ]
+                    }
+                ],
+                "policy": {
+                    "timeout": "0.12:00:00",
+                    "retry": 0,
+                    "retryIntervalInSeconds": 30,
+                    "secureOutput": false,
+                    "secureInput": false
+                },
+                "typeProperties": {
+                    "waitOnCompletion": true,
+                    "operationType": "InvokeFabricPipeline",
+                    "pipelineId": "e701f0bd-e1b5-4f22-9b84-ddda55774128",
+                    "workspaceId": "f428900f-2885-4f12-a5e1-c8aeb83338be"
+                },
+                "externalReferences": {
+                    "connection": "d7f03fd7-786b-4527-bf2f-d8a9349b690e"
+                }
+            },
+            {
+                "name": "gold_fact_pipeline",
+                "type": "InvokePipeline",
+                "dependsOn": [
+                    {
+                        "activity": "gold_dim_pipeline",
+                        "dependencyConditions": [
+                            "Succeeded"
+                        ]
+                    }
+                ],
+                "policy": {
+                    "timeout": "0.12:00:00",
+                    "retry": 0,
+                    "retryIntervalInSeconds": 30,
+                    "secureOutput": false,
+                    "secureInput": false
+                },
+                "typeProperties": {
+                    "waitOnCompletion": true,
+                    "operationType": "InvokeFabricPipeline",
+                    "pipelineId": "516cd074-b6df-4274-9b78-2b75c4ec4a22",
+                    "workspaceId": "f428900f-2885-4f12-a5e1-c8aeb83338be"
+                },
+                "externalReferences": {
+                    "connection": "d7f03fd7-786b-4527-bf2f-d8a9349b690e"
+                }
+            },
+            {
+                "name": "iceland_semantic_model",
+                "type": "PBISemanticModelRefresh",
+                "dependsOn": [
+                    {
+                        "activity": "gold_fact_pipeline",
+                        "dependencyConditions": [
+                            "Succeeded"
+                        ]
+                    }
+                ],
+                "policy": {
+                    "timeout": "0.12:00:00",
+                    "retry": 0,
+                    "retryIntervalInSeconds": 30,
+                    "secureOutput": false,
+                    "secureInput": false
+                },
+                "typeProperties": {
+                    "method": "post",
+                    "waitOnCompletion": true,
+                    "commitMode": "Transactional",
+                    "operationType": "SemanticModelRefresh",
+                    "groupId": "f428900f-2885-4f12-a5e1-c8aeb83338be",
+                    "datasetId": "e5e1a312-9e3a-41b8-81e3-08bf78f99f22",
+                    "objects": [
+                        {
+                            "table": "dim_indicator"
+                        },
+                        {
+                            "table": "dim_geography"
+                        },
+                        {
+                            "table": "dim_source"
+                        },
+                        {
+                            "table": "fact_monthly_economics"
+                        },
+                        {
+                            "table": "dim_date"
+                        },
+                        {
+                            "table": "_measures"
+                        }
+                    ]
+                },
+                "externalReferences": {
+                    "connection": "ceaa2f7d-bde3-43e0-9dee-004a0555a145"
+                }
+            }
+        ],
+        "concurrency": 1,
+        "lastModifiedByObjectId": "846ba975-cfc6-4803-9994-b12a9e384ae8",
+        "lastPublishTime": "2026-04-29T15:48:32Z"
+    }
+}

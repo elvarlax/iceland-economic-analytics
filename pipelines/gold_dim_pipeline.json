@@ -1,0 +1,155 @@
+{
+    "name": "gold_dim_pipeline",
+    "objectId": "e701f0bd-e1b5-4f22-9b84-ddda55774128",
+    "properties": {
+        "activities": [
+            {
+                "name": "gold_dim_date",
+                "type": "TridentNotebook",
+                "dependsOn": [],
+                "policy": {
+                    "timeout": "0.12:00:00",
+                    "retry": 0,
+                    "retryIntervalInSeconds": 30,
+                    "secureOutput": false,
+                    "secureInput": false
+                },
+                "typeProperties": {
+                    "notebookId": "3efa498c-9b5c-4374-82e9-04fe8e026cea",
+                    "workspaceId": "f428900f-2885-4f12-a5e1-c8aeb83338be"
+                }
+            },
+            {
+                "name": "wait_after_dim_date",
+                "type": "Wait",
+                "dependsOn": [
+                    {
+                        "activity": "gold_dim_date",
+                        "dependencyConditions": [
+                            "Succeeded"
+                        ]
+                    }
+                ],
+                "typeProperties": {
+                    "waitTimeInSeconds": 30
+                }
+            },
+            {
+                "name": "gold_dim_geography",
+                "type": "TridentNotebook",
+                "dependsOn": [
+                    {
+                        "activity": "wait_after_dim_date",
+                        "dependencyConditions": [
+                            "Succeeded"
+                        ]
+                    }
+                ],
+                "policy": {
+                    "timeout": "0.12:00:00",
+                    "retry": 0,
+                    "retryIntervalInSeconds": 30,
+                    "secureOutput": false,
+                    "secureInput": false
+                },
+                "typeProperties": {
+                    "notebookId": "f5e6743e-37c2-4bab-8f99-9a8de151030a",
+                    "workspaceId": "f428900f-2885-4f12-a5e1-c8aeb83338be"
+                }
+            },
+            {
+                "name": "wait_after_dim_geography",
+                "type": "Wait",
+                "dependsOn": [
+                    {
+                        "activity": "gold_dim_geography",
+                        "dependencyConditions": [
+                            "Succeeded"
+                        ]
+                    }
+                ],
+                "typeProperties": {
+                    "waitTimeInSeconds": 30
+                }
+            },
+            {
+                "name": "gold_dim_source",
+                "type": "TridentNotebook",
+                "dependsOn": [
+                    {
+                        "activity": "wait_after_dim_geography",
+                        "dependencyConditions": [
+                            "Succeeded"
+                        ]
+                    }
+                ],
+                "policy": {
+                    "timeout": "0.12:00:00",
+                    "retry": 0,
+                    "retryIntervalInSeconds": 30,
+                    "secureOutput": false,
+                    "secureInput": false
+                },
+                "typeProperties": {
+                    "notebookId": "085f8096-e86e-4ab9-979a-c5f12fafde2c",
+                    "workspaceId": "f428900f-2885-4f12-a5e1-c8aeb83338be"
+                }
+            },
+            {
+                "name": "wait_after_dim_source",
+                "type": "Wait",
+                "dependsOn": [
+                    {
+                        "activity": "gold_dim_source",
+                        "dependencyConditions": [
+                            "Succeeded"
+                        ]
+                    }
+                ],
+                "typeProperties": {
+                    "waitTimeInSeconds": 30
+                }
+            },
+            {
+                "name": "gold_dim_indicator",
+                "type": "TridentNotebook",
+                "dependsOn": [
+                    {
+                        "activity": "wait_after_dim_source",
+                        "dependencyConditions": [
+                            "Succeeded"
+                        ]
+                    }
+                ],
+                "policy": {
+                    "timeout": "0.12:00:00",
+                    "retry": 0,
+                    "retryIntervalInSeconds": 30,
+                    "secureOutput": false,
+                    "secureInput": false
+                },
+                "typeProperties": {
+                    "notebookId": "c9eeb508-2e75-4821-b584-28b6ff865b4a",
+                    "workspaceId": "f428900f-2885-4f12-a5e1-c8aeb83338be"
+                }
+            },
+            {
+                "name": "wait_after_dim_indicator",
+                "type": "Wait",
+                "dependsOn": [
+                    {
+                        "activity": "gold_dim_indicator",
+                        "dependencyConditions": [
+                            "Succeeded"
+                        ]
+                    }
+                ],
+                "typeProperties": {
+                    "waitTimeInSeconds": 30
+                }
+            }
+        ],
+        "lastModifiedByObjectId": "846ba975-cfc6-4803-9994-b12a9e384ae8",
+        "lastPublishTime": "2026-05-01T13:04:30Z"
+    }
+}

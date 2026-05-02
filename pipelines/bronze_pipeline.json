@@ -1,0 +1,117 @@
+{
+    "name": "bronze_pipeline",
+    "objectId": "824e7ed2-4571-4078-bc42-54a760fb9b82",
+    "properties": {
+        "activities": [
+            {
+                "name": "bronze_central_bank",
+                "type": "TridentNotebook",
+                "dependsOn": [
+                    {
+                        "activity": "wait_after_bronze_setup",
+                        "dependencyConditions": [
+                            "Succeeded"
+                        ]
+                    }
+                ],
+                "policy": {
+                    "timeout": "0.12:00:00",
+                    "retry": 0,
+                    "retryIntervalInSeconds": 30,
+                    "secureOutput": false,
+                    "secureInput": false
+                },
+                "typeProperties": {
+                    "notebookId": "f5a2148e-aaef-42a1-a8cc-a8cb369cc59c",
+                    "workspaceId": "f428900f-2885-4f12-a5e1-c8aeb83338be"
+                }
+            },
+            {
+                "name": "bronze_statistics_iceland",
+                "type": "TridentNotebook",
+                "dependsOn": [
+                    {
+                        "activity": "wait_after_central_bank",
+                        "dependencyConditions": [
+                            "Succeeded"
+                        ]
+                    }
+                ],
+                "policy": {
+                    "timeout": "0.12:00:00",
+                    "retry": 0,
+                    "retryIntervalInSeconds": 30,
+                    "secureOutput": false,
+                    "secureInput": false
+                },
+                "typeProperties": {
+                    "notebookId": "71b8185c-2e4a-4ee8-a513-175d2f198619",
+                    "workspaceId": "f428900f-2885-4f12-a5e1-c8aeb83338be"
+                }
+            },
+            {
+                "name": "wait_after_central_bank",
+                "type": "Wait",
+                "dependsOn": [
+                    {
+                        "activity": "bronze_central_bank",
+                        "dependencyConditions": [
+                            "Succeeded"
+                        ]
+                    }
+                ],
+                "typeProperties": {
+                    "waitTimeInSeconds": 30
+                }
+            },
+            {
+                "name": "wait_after_bronze_setup",
+                "type": "Wait",
+                "dependsOn": [
+                    {
+                        "activity": "bronze_setup",
+                        "dependencyConditions": [
+                            "Succeeded"
+                        ]
+                    }
+                ],
+                "typeProperties": {
+                    "waitTimeInSeconds": 30
+                }
+            },
+            {
+                "name": "bronze_setup",
+                "type": "TridentNotebook",
+                "dependsOn": [],
+                "policy": {
+                    "timeout": "0.12:00:00",
+                    "retry": 0,
+                    "retryIntervalInSeconds": 30,
+                    "secureOutput": false,
+                    "secureInput": false
+                },
+                "typeProperties": {
+                    "notebookId": "aeb5d85c-8b72-4c98-9baf-0e6bef7cc454",
+                    "workspaceId": "f428900f-2885-4f12-a5e1-c8aeb83338be"
+                }
+            },
+            {
+                "name": "wait_after_statistics_iceland",
+                "type": "Wait",
+                "dependsOn": [
+                    {
+                        "activity": "bronze_statistics_iceland",
+                        "dependencyConditions": [
+                            "Succeeded"
+                        ]
+                    }
+                ],
+                "typeProperties": {
+                    "waitTimeInSeconds": 30
+                }
+            }
+        ],
+        "lastModifiedByObjectId": "846ba975-cfc6-4803-9994-b12a9e384ae8",
+        "lastPublishTime": "2026-05-01T14:14:53Z"
+    }
+}

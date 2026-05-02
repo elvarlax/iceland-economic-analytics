@@ -1,0 +1,117 @@
+{
+    "name": "silver_pipeline",
+    "objectId": "b1c4d913-8f7c-4d5b-af54-61ef4a4a48ca",
+    "properties": {
+        "activities": [
+            {
+                "name": "silver_central_bank",
+                "type": "TridentNotebook",
+                "dependsOn": [],
+                "policy": {
+                    "timeout": "0.12:00:00",
+                    "retry": 0,
+                    "retryIntervalInSeconds": 30,
+                    "secureOutput": false,
+                    "secureInput": false
+                },
+                "typeProperties": {
+                    "notebookId": "8131b773-ca82-4946-bac4-c8bcef5a1134",
+                    "workspaceId": "f428900f-2885-4f12-a5e1-c8aeb83338be"
+                }
+            },
+            {
+                "name": "silver_statistics_gdp",
+                "type": "TridentNotebook",
+                "dependsOn": [
+                    {
+                        "activity": "wait_after_central_bank",
+                        "dependencyConditions": [
+                            "Succeeded"
+                        ]
+                    }
+                ],
+                "policy": {
+                    "timeout": "0.12:00:00",
+                    "retry": 0,
+                    "retryIntervalInSeconds": 30,
+                    "secureOutput": false,
+                    "secureInput": false
+                },
+                "typeProperties": {
+                    "notebookId": "fb98e3a2-8480-4e5b-ab28-a10c2b5e5928",
+                    "workspaceId": "f428900f-2885-4f12-a5e1-c8aeb83338be"
+                }
+            },
+            {
+                "name": "wait_after_central_bank",
+                "type": "Wait",
+                "dependsOn": [
+                    {
+                        "activity": "silver_central_bank",
+                        "dependencyConditions": [
+                            "Succeeded"
+                        ]
+                    }
+                ],
+                "typeProperties": {
+                    "waitTimeInSeconds": 30
+                }
+            },
+            {
+                "name": "wait_after_statistics_gdp",
+                "type": "Wait",
+                "dependsOn": [
+                    {
+                        "activity": "silver_statistics_gdp",
+                        "dependencyConditions": [
+                            "Succeeded"
+                        ]
+                    }
+                ],
+                "typeProperties": {
+                    "waitTimeInSeconds": 30
+                }
+            },
+            {
+                "name": "silver_statistics_monthly",
+                "type": "TridentNotebook",
+                "dependsOn": [
+                    {
+                        "activity": "wait_after_statistics_gdp",
+                        "dependencyConditions": [
+                            "Succeeded"
+                        ]
+                    }
+                ],
+                "policy": {
+                    "timeout": "0.12:00:00",
+                    "retry": 0,
+                    "retryIntervalInSeconds": 30,
+                    "secureOutput": false,
+                    "secureInput": false
+                },
+                "typeProperties": {
+                    "notebookId": "4fe71eeb-b061-4b13-aa5e-0b91b1ac9b20",
+                    "workspaceId": "f428900f-2885-4f12-a5e1-c8aeb83338be"
+                }
+            },
+            {
+                "name": "wait_after_statistics_monthly",
+                "type": "Wait",
+                "dependsOn": [
+                    {
+                        "activity": "silver_statistics_monthly",
+                        "dependencyConditions": [
+                            "Succeeded"
+                        ]
+                    }
+                ],
+                "typeProperties": {
+                    "waitTimeInSeconds": 30
+                }
+            }
+        ],
+        "lastModifiedByObjectId": "846ba975-cfc6-4803-9994-b12a9e384ae8",
+        "lastPublishTime": "2026-05-01T13:04:07Z"
+    }
+}

@@ -1,0 +1,64 @@
+{
+    "name": "gold_fact_pipeline",
+    "objectId": "516cd074-b6df-4274-9b78-2b75c4ec4a22",
+    "properties": {
+        "activities": [
+            {
+                "name": "gold_fact_monthly_economics",
+                "type": "TridentNotebook",
+                "dependsOn": [],
+                "policy": {
+                    "timeout": "0.12:00:00",
+                    "retry": 0,
+                    "retryIntervalInSeconds": 30,
+                    "secureOutput": false,
+                    "secureInput": false
+                },
+                "typeProperties": {
+                    "notebookId": "28c6d4a4-16e2-4a87-980d-796907455c38",
+                    "workspaceId": "f428900f-2885-4f12-a5e1-c8aeb83338be"
+                }
+            },
+            {
+                "name": "wait_after_fact_monthly_economics",
+                "type": "Wait",
+                "dependsOn": [
+                    {
+                        "activity": "gold_fact_monthly_economics",
+                        "dependencyConditions": [
+                            "Succeeded"
+                        ]
+                    }
+                ],
+                "typeProperties": {
+                    "waitTimeInSeconds": 30
+                }
+            },
+            {
+                "name": "validate_fact_monthly_economics",
+                "type": "TridentNotebook",
+                "dependsOn": [
+                    {
+                        "activity": "wait_after_fact_monthly_economics",
+                        "dependencyConditions": [
+                            "Succeeded"
+                        ]
+                    }
+                ],
+                "policy": {
+                    "timeout": "0.12:00:00",
+                    "retry": 0,
+                    "retryIntervalInSeconds": 30,
+                    "secureOutput": false,
+                    "secureInput": false
+                },
+                "typeProperties": {
+                    "notebookId": "4e1d5473-1059-4e6b-aae6-ea5b29db2bc9",
+                    "workspaceId": "f428900f-2885-4f12-a5e1-c8aeb83338be"
+                }
+            }
+        ],
+        "lastModifiedByObjectId": "846ba975-cfc6-4803-9994-b12a9e384ae8",
+        "lastPublishTime": "2026-05-01T13:04:42Z"
+    }
+}

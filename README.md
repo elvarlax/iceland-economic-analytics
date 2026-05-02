@@ -1,6 +1,6 @@
 # Iceland Economic Analytics
 
-An end-to-end Microsoft Fabric data engineering pipeline tracking Iceland's economic performance across three major crises, the 2008 banking collapse, the 2020 pandemic, and the 2022–2024 inflation and volcanic period.
+An end-to-end Microsoft Fabric data engineering pipeline tracking Iceland's economic performance across three major crises: the 2008 banking collapse, the 2020 pandemic, and the 2022–2024 inflation and volcanic period.
 
 Built as a portfolio project for the **Microsoft Certified: Fabric Data Engineer Associate (DP-700)** certification.
 
@@ -10,9 +10,9 @@ Built as a portfolio project for the **Microsoft Certified: Fabric Data Engineer
 
 Iceland has faced three major economic crises in 16 years:
 
-- **2008** — The entire banking system collapsed overnight
-- **2020** — Tourism vanished and GDP cratered
-- **2022–2024** — Inflation hit 10%, interest rates reached 9.25%, and volcanic eruptions displaced thousands
+*   **2008** — The entire banking system collapsed overnight.
+*   **2020** — Tourism vanished and GDP cratered.
+*   **2022–2024** — Inflation hit 10%, interest rates reached 9.25%, and volcanic eruptions displaced thousands.
 
 Official data from **Seðlabanki Íslands** (Central Bank of Iceland) and **Hagstofa Íslands** (Statistics Iceland) is ingested into Microsoft Fabric and transformed through a Bronze → Silver → Gold medallion pipeline into a Kimball star schema, served by a Power BI Direct Lake semantic model.
 
@@ -131,6 +131,25 @@ A master Data Factory pipeline orchestrates the full end-to-end flow. The Gold F
 
 </div>
 
+## Project Structure
+
+```text
+├── notebooks/                   # PySpark & Spark SQL Transformation Logic
+│   ├── bronze/                  # API Ingestion
+│   ├── silver/                  # Cleaning & Normalization
+│   ├── gold/                    # Star Schema Dimensional Modeling
+│   └── quality/                 # Great Expectations Validation
+├── pipelines/                   # Data Factory Pipeline Definitions (JSON)
+│   ├── master_pipeline.json     # Full end-to-end orchestration
+│   ├── bronze_pipeline.json
+│   ├── silver_pipeline.json
+│   ├── gold_dim_pipeline.json
+│   └── gold_fact_pipeline.json
+├── semantic_model/              # Power BI Direct Lake Model
+│   └── measures.dax             # Calculated measures logic
+└── assets/                      # Dashboard screenshots & Diagrams
+```
+
 ---
 
 ## Notebooks
@@ -230,6 +249,20 @@ Standard daily date spine (1990–2030) with full calendar attributes.
 
 ---
 
+## Semantic Model (Direct Lake)
+
+The project utilizes a **Direct Lake** semantic model for high-performance analytics, loading Delta Parquet files directly from OneLake into memory.
+
+<div align="center">
+
+![Semantic Model Relationship Diagram](assets/semantic_model.png)
+
+</div>
+
+The DAX measures used in the dashboard can be found in `semantic_model/measures.dax`.
+
+---
+
 ## Architecture Decisions
 
 | Decision | Rationale |
@@ -262,9 +295,9 @@ Standard daily date spine (1990–2030) with full calendar attributes.
 
 **Prerequisites:** A Microsoft Fabric workspace with F2+ capacity or an active Trial capacity.
 
-1. **Initialize** — Run `notebooks/bronze/bronze_setup.ipynb` to create the Lakehouse and folder structure.
-2. **Build Pipelines** — Recreate the Data Factory pipelines in your Fabric workspace following the pipeline screenshots in `assets/`.
-3. **Validate** — Confirm `quality/validate_fact_monthly_economics.ipynb` references your Gold tables.
+1. **Initialize** — Run `notebooks/bronze/bronze_setup.ipynb` to create the Lakehouse schema and folder structure.
+2. **Import Pipelines** — Use the JSON definitions in the `/pipelines` folder to recreate the Data Factory flow, or reference them to manually configure your activities.
+3. **Validate** — Confirm `quality/validate_fact_monthly_economics.ipynb` correctly references your Gold tables.
 4. **Execute** — Trigger the **Master Pipeline** to run the full end-to-end flow.
 
 ### Pipeline Run Order
