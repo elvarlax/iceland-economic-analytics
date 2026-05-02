@@ -8,7 +8,7 @@ Built as a portfolio project for the **Microsoft Certified: Fabric Data Engineer
 
 ## Overview
 
-Iceland has faced three major economic crises in 16 years:
+Iceland has faced three major economic crises in 18 years:
 
 *   **2008** — The entire banking system collapsed overnight.
 *   **2020** — Tourism vanished and GDP cratered.
@@ -54,7 +54,7 @@ All data is sourced directly from official Icelandic institutions.
 | Indicator | Publisher | Lag |
 |---|---|---|
 | Policy Rate | Seðlabanki | No lag — updated immediately on rate decision days (8 times/year) |
-| CPI Inflation | Hagstofa | Published at the end of each reference month — typically 2–4 weeks |
+| CPI Inflation | Seðlabanki | Published at the end of each reference month — typically 2–4 weeks |
 | ISK/EUR Rate | Seðlabanki | No lag — daily data, always current |
 | GDP Growth | Hagstofa | ~6–8 weeks after quarter end |
 | House Price Index | Hagstofa | ~2 months behind the reference month |
@@ -260,7 +260,7 @@ erDiagram
 
 ### `gold.dim_date`
 
-Standard daily date spine (1990–2030) with full calendar attributes.
+Standard daily date spine (1980–2030) with full calendar attributes.
 
 `crisis_period` labels each date as `Banking Collapse` (2008–2011), `Pandemic` (2020–2021), `Inflation & Volcanic` (2022–2026), or `Normal`. `is_crisis_period` boolean flag. Used in Power BI for shaded crisis bands without DAX complexity.
 
