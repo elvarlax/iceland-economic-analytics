@@ -1,6 +1,6 @@
 # Iceland Economic Analytics
 
-An end-to-end Microsoft Fabric data engineering pipeline tracking Iceland's economic performance across three major crises: the 2008 banking collapse, the 2020 pandemic, and the 2022–2024 inflation and volcanic period.
+An end-to-end Microsoft Fabric data engineering pipeline tracking Iceland's economic performance across three major crises: the 2008 banking collapse, the 2020 pandemic, and the 2022–2026 inflation and volcanic period.
 
 Built as a portfolio project for the **Microsoft Certified: Fabric Data Engineer Associate (DP-700)** certification.
 
@@ -12,7 +12,7 @@ Iceland has faced three major economic crises in 16 years:
 
 *   **2008** — The entire banking system collapsed overnight.
 *   **2020** — Tourism vanished and GDP cratered.
-*   **2022–2024** — Inflation hit 10%, interest rates reached 9.25%, and volcanic eruptions displaced thousands.
+*   **2022–2026** — Inflation hit 10%, interest rates reached 9.25%, and volcanic eruptions displaced thousands.
 
 Official data from **Seðlabanki Íslands** (Central Bank of Iceland) and **Hagstofa Íslands** (Statistics Iceland) is ingested into Microsoft Fabric and transformed through a Bronze → Silver → Gold medallion pipeline into a Kimball star schema, served by a Power BI Direct Lake semantic model.
 
@@ -23,12 +23,16 @@ Official data from **Seðlabanki Íslands** (Central Bank of Iceland) and **Hags
 <div align="center">
 
 ### Page 1 — The Three Crises
-*CPI vs Policy Rate, GDP Growth, ISK/EUR — full timeline 2008–2025 with crisis period filter*
+*CPI vs Policy Rate, GDP Growth, ISK/EUR — full timeline 2008–2026 with crisis period filter*
+
+The six KPI cards at the top display the **latest available value** for each indicator, sourced directly from the Seðlabanki and Hagstofa APIs via the `(Latest)` DAX measures.
 
 ![Dashboard Page 1 — The Three Crises](assets/dashboard_crisis_overview.png)
 
 ### Page 2 — Crisis Head-to-Head
 *Peak indicators compared across Banking Collapse, Pandemic, and Inflation & Volcanic periods*
+
+The matrix table shows peak stress indicators for each crisis period — highest CPI, highest policy rate, worst quarterly GDP growth, and peak ISK/EUR rate. The three charts below track House Price Index, Wage Index, and the Affordability Ratio (HPI ÷ Wage Index) across the full 2008–2026 timeline, illustrating how housing affordability has evolved through each crisis.
 
 ![Dashboard Page 2 — Crisis Head-to-Head](assets/dashboard_crisis_comparison.png)
 
@@ -44,6 +48,19 @@ Official data from **Seðlabanki Íslands** (Central Bank of Iceland) and **Hags
 | [Hagstofa Íslands](https://hagstofa.is) — PX-Web REST API | GDP YoY growth (quarterly), House Price Index, Wage Index | Monthly / Quarterly |
 
 All data is sourced directly from official Icelandic institutions.
+
+**Publication lag:** KPI cards show the latest value available in the API at the time the pipeline was last run. Each indicator publishes on its own schedule:
+
+| Indicator | Publisher | Lag |
+|---|---|---|
+| Policy Rate | Seðlabanki | No lag — updated immediately on rate decision days (8 times/year) |
+| CPI Inflation | Hagstofa | Published at the end of each reference month — typically 2–4 weeks |
+| ISK/EUR Rate | Seðlabanki | No lag — daily data, always current |
+| GDP Growth | Hagstofa | ~6–8 weeks after quarter end |
+| House Price Index | Hagstofa | ~2 months behind the reference month |
+| Wage Index | Hagstofa | ~2 months behind the reference month |
+
+This means the KPI cards may not all reference the same month. This is not a pipeline issue — it reflects when official statistics are actually published. Re-running the master pipeline will always pull the most recently available figures.
 
 ---
 
@@ -239,13 +256,13 @@ erDiagram
 | `iskeur` | ISK/EUR Exchange Rate | ISK per 1 EUR | Seðlabanki |
 | `gdp_yoy_growth` | GDP Year-on-Year Growth | Percent (%) | Hagstofa |
 | `hpi` | House Price Index | Index (Mar 2000=100) | Hagstofa |
-| `wage_index` | Wage Index | Index (Dec 2018=100) | Hagstofa |
+| `wage_index` | Wage Index | Index (Dec 1988=100) | Hagstofa |
 
 ### `gold.dim_date`
 
 Standard daily date spine (1990–2030) with full calendar attributes.
 
-`crisis_period` labels each date as `Banking Collapse` (2008–2011), `Pandemic` (2020–2021), `Inflation & Volcanic` (2022–2024), or `Normal`. `is_crisis_period` boolean flag. Used in Power BI for shaded crisis bands without DAX complexity.
+`crisis_period` labels each date as `Banking Collapse` (2008–2011), `Pandemic` (2020–2021), `Inflation & Volcanic` (2022–2026), or `Normal`. `is_crisis_period` boolean flag. Used in Power BI for shaded crisis bands without DAX complexity.
 
 ---
 

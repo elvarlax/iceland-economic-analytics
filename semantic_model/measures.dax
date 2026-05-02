@@ -55,11 +55,104 @@ CALCULATE(
     'dim_indicator'[indicator_code] = "hpi"
 )
 
-// Wage Index (base: December 2018 = 100).
+// Wage Index (base: December 1988 = 100).
 Wage Index =
 CALCULATE(
     AVERAGE('fact_monthly_economics'[value]),
     'dim_indicator'[indicator_code] = "wage_index"
+)
+
+
+// ── KPI Card Measures (latest available month) ────────────────────
+// Use these on KPI cards so they show the most recent data point
+// rather than the full-period average. LASTNONBLANK returns the last
+// date that has a non-blank value for the given indicator.
+
+Policy Rate (Latest) =
+VAR _lastKey =
+    CALCULATE(
+        MAX('fact_monthly_economics'[date_key]),
+        'dim_indicator'[indicator_code] = "policy_rate"
+    )
+RETURN
+DIVIDE(
+    CALCULATE(
+        AVERAGE('fact_monthly_economics'[value]),
+        'dim_indicator'[indicator_code] = "policy_rate",
+        'fact_monthly_economics'[date_key] = _lastKey
+    ),
+    100
+)
+
+CPI Inflation (Latest) =
+VAR _lastKey =
+    CALCULATE(
+        MAX('fact_monthly_economics'[date_key]),
+        'dim_indicator'[indicator_code] = "cpi"
+    )
+RETURN
+DIVIDE(
+    CALCULATE(
+        AVERAGE('fact_monthly_economics'[value]),
+        'dim_indicator'[indicator_code] = "cpi",
+        'fact_monthly_economics'[date_key] = _lastKey
+    ),
+    100
+)
+
+ISK/EUR Rate (Latest) =
+VAR _lastKey =
+    CALCULATE(
+        MAX('fact_monthly_economics'[date_key]),
+        'dim_indicator'[indicator_code] = "iskeur"
+    )
+RETURN
+CALCULATE(
+    AVERAGE('fact_monthly_economics'[value]),
+    'dim_indicator'[indicator_code] = "iskeur",
+    'fact_monthly_economics'[date_key] = _lastKey
+)
+
+GDP Growth (Latest) =
+VAR _lastKey =
+    CALCULATE(
+        MAX('fact_monthly_economics'[date_key]),
+        'dim_indicator'[indicator_code] = "gdp_yoy_growth"
+    )
+RETURN
+DIVIDE(
+    CALCULATE(
+        AVERAGE('fact_monthly_economics'[value]),
+        'dim_indicator'[indicator_code] = "gdp_yoy_growth",
+        'fact_monthly_economics'[date_key] = _lastKey
+    ),
+    100
+)
+
+House Price Index (Latest) =
+VAR _lastKey =
+    CALCULATE(
+        MAX('fact_monthly_economics'[date_key]),
+        'dim_indicator'[indicator_code] = "hpi"
+    )
+RETURN
+CALCULATE(
+    AVERAGE('fact_monthly_economics'[value]),
+    'dim_indicator'[indicator_code] = "hpi",
+    'fact_monthly_economics'[date_key] = _lastKey
+)
+
+Wage Index (Latest) =
+VAR _lastKey =
+    CALCULATE(
+        MAX('fact_monthly_economics'[date_key]),
+        'dim_indicator'[indicator_code] = "wage_index"
+    )
+RETURN
+CALCULATE(
+    AVERAGE('fact_monthly_economics'[value]),
+    'dim_indicator'[indicator_code] = "wage_index",
+    'fact_monthly_economics'[date_key] = _lastKey
 )
 
 
@@ -88,7 +181,8 @@ DIVIDE(
     100
 )
 
-// Lowest (worst) GDP growth recorded within the filtered crisis period.
+// Lowest (worst) quarterly GDP growth recorded within the filtered crisis period.
+// Uses MIN over quarterly observations — differs from the annual-average bars on page 1.
 Worst GDP Growth =
 DIVIDE(
     CALCULATE(
