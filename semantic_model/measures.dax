@@ -1,20 +1,17 @@
-// Raw CPI value is an index level (~665), not a rate.
-// SAMEPERIODLASTYEAR converts it to a true year-on-year % change.
-CPI Inflation (YoY) =
-VAR _currentIndex =
-    CALCULATE(
-        AVERAGE('fact_monthly_economics'[value]),
-        'dim_indicator'[indicator_code] = "cpi"
-    )
-VAR _lastYearIndex =
-    CALCULATE(
-        AVERAGE('fact_monthly_economics'[value]),
-        'dim_indicator'[indicator_code] = "cpi",
-        SAMEPERIODLASTYEAR('dim_date'[full_date])
-    )
-RETURN DIVIDE(_currentIndex - _lastYearIndex, _lastYearIndex)
+// ================================================================
+// Iceland Economic Analytics — DAX Measures
+// Semantic model: gold.* Kimball star schema (Fabric Lakehouse)
+// ================================================================
+// Percentage indicators are stored as percentage points in the
+// fact table (e.g. 9.25 for 9.25%) and divided by 100 here so
+// Power BI displays them correctly when formatted as Percentage.
+// Index and FX values require no transformation.
+// ================================================================
 
-// Stored as a percentage (e.g. 9.25). Divide by 100 for Power BI percentage formatting.
+
+// ── Page 1: Time-Series Measures ─────────────────────────────────
+
+// Central Bank policy rate (end-of-period, % p.a.).
 Policy Rate =
 DIVIDE(
     CALCULATE(
@@ -24,7 +21,24 @@ DIVIDE(
     100
 )
 
-// Stored as a percentage (e.g. 4.70). Divide by 100 for Power BI percentage formatting.
+// Year-on-year CPI inflation rate — pre-computed by the pipeline.
+CPI Inflation (YoY) =
+DIVIDE(
+    CALCULATE(
+        AVERAGE('fact_monthly_economics'[value]),
+        'dim_indicator'[indicator_code] = "cpi"
+    ),
+    100
+)
+
+// ISK per 1 EUR — a higher value indicates a weaker króna.
+ISK/EUR Rate =
+CALCULATE(
+    AVERAGE('fact_monthly_economics'[value]),
+    'dim_indicator'[indicator_code] = "iskeur"
+)
+
+// Year-on-year GDP growth rate — pre-computed by the pipeline.
 GDP Growth (YoY) =
 DIVIDE(
     CALCULATE(
@@ -34,26 +48,73 @@ DIVIDE(
     100
 )
 
-EUR/USD Rate =
+// House Price Index (base: March 2000 = 100).
+House Price Index =
 CALCULATE(
     AVERAGE('fact_monthly_economics'[value]),
-    'dim_indicator'[indicator_code] = "avg_eurusd"
+    'dim_indicator'[indicator_code] = "hpi"
 )
 
-ISK/EUR Rate =
+// Wage Index (base: December 2018 = 100).
+Wage Index =
 CALCULATE(
     AVERAGE('fact_monthly_economics'[value]),
-    'dim_indicator'[indicator_code] = "avg_iskeur"
+    'dim_indicator'[indicator_code] = "wage_index"
 )
 
-ISK/USD Rate =
-CALCULATE(
-    AVERAGE('fact_monthly_economics'[value]),
-    'dim_indicator'[indicator_code] = "avg_iskusd"
+
+// ── Page 2: Crisis Comparison Measures ───────────────────────────
+// Intended for a matrix with dim_date[crisis_period] as columns.
+// Apply a visual-level filter to exclude "Normal" — leaving the
+// three crisis columns: Banking Collapse, Pandemic, Inflation & Volcanic.
+
+// Highest CPI inflation recorded within the filtered crisis period.
+Peak CPI =
+DIVIDE(
+    CALCULATE(
+        MAX('fact_monthly_economics'[value]),
+        'dim_indicator'[indicator_code] = "cpi"
+    ),
+    100
 )
 
-OMX Index =
+// Highest policy rate recorded within the filtered crisis period.
+Peak Policy Rate =
+DIVIDE(
+    CALCULATE(
+        MAX('fact_monthly_economics'[value]),
+        'dim_indicator'[indicator_code] = "policy_rate"
+    ),
+    100
+)
+
+// Lowest (worst) GDP growth recorded within the filtered crisis period.
+Worst GDP Growth =
+DIVIDE(
+    CALCULATE(
+        MIN('fact_monthly_economics'[value]),
+        'dim_indicator'[indicator_code] = "gdp_yoy_growth"
+    ),
+    100
+)
+
+// Highest ISK/EUR rate recorded within the filtered crisis period.
+Peak ISK/EUR =
 CALCULATE(
-    AVERAGE('fact_monthly_economics'[value]),
-    'dim_indicator'[indicator_code] = "avg_omx"
+    MAX('fact_monthly_economics'[value]),
+    'dim_indicator'[indicator_code] = "iskeur"
+)
+
+// HPI divided by Wage Index — a rising ratio means housing costs
+// are outpacing wages (lower = more affordable).
+Affordability Ratio =
+DIVIDE(
+    CALCULATE(
+        AVERAGE('fact_monthly_economics'[value]),
+        'dim_indicator'[indicator_code] = "hpi"
+    ),
+    CALCULATE(
+        AVERAGE('fact_monthly_economics'[value]),
+        'dim_indicator'[indicator_code] = "wage_index"
+    )
 )

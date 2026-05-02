@@ -25,3 +25,8 @@ Thumbs.db
 derby.log
 metastore_db/
 spark-warehouse/
+
+# Claude Code
+.claudeignore
+CLAUDE.md
+/.claude
