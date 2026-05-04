@@ -25,14 +25,14 @@ Official data from **Seðlabanki Íslands** (Central Bank of Iceland) and **Hags
 ### Page 1 — The Three Crises
 *CPI vs Policy Rate, GDP Growth, ISK/EUR — full timeline 2008–2026 with crisis period filter*
 
-The six KPI cards at the top display the **latest available value** for each indicator, sourced directly from the Seðlabanki and Hagstofa APIs via the `(Latest)` DAX measures.
+The seven KPI cards at the top display the **latest available value** for each indicator, sourced directly from the Seðlabanki and Hagstofa APIs via the `(Latest)` DAX measures.
 
 ![Dashboard Page 1 — The Three Crises](assets/dashboard_crisis_overview.png)
 
 ### Page 2 — Crisis Head-to-Head
 *Peak indicators compared across Banking Collapse, Pandemic, and Inflation & Volcanic periods*
 
-The matrix table shows peak stress indicators for each crisis period — highest CPI, highest policy rate, worst quarterly GDP growth, and peak ISK/EUR rate. The three charts below track House Price Index, Wage Index, and the Affordability Ratio (HPI ÷ Wage Index) across the full 2008–2026 timeline, illustrating how housing affordability has evolved through each crisis.
+The matrix table shows peak stress indicators for each crisis period — highest CPI, highest policy rate, worst quarterly GDP growth, and peak ISK/EUR rate. The four charts below track House Price Index, Wage Index, Real Wage Index, and the Affordability Ratio (HPI ÷ Wage Index) across the full 2008–2026 timeline.
 
 ![Dashboard Page 2 — Crisis Head-to-Head](assets/dashboard_crisis_comparison.png)
 
@@ -44,7 +44,7 @@ The matrix table shows peak stress indicators for each crisis period — highest
 
 | Source | Data | Frequency |
 |---|---|---|
-| [Seðlabanki Íslands](https://sedlabanki.is) — XML API | Policy rate, CPI inflation, ISK/EUR exchange rate | Daily / Monthly |
+| [Seðlabanki Íslands](https://sedlabanki.is) — XML API | Policy rate, CPI inflation (YoY %), CPI index level (base 1988=100), ISK/EUR exchange rate | Daily / Monthly |
 | [Hagstofa Íslands](https://hagstofa.is) — PX-Web REST API | GDP YoY growth (quarterly), House Price Index, Wage Index | Monthly / Quarterly |
 
 All data is sourced directly from official Icelandic institutions.
@@ -59,6 +59,8 @@ All data is sourced directly from official Icelandic institutions.
 | GDP Growth | Hagstofa | ~6–8 weeks after quarter end |
 | House Price Index | Hagstofa | ~2 months behind the reference month |
 | Wage Index | Hagstofa | ~2 months behind the reference month |
+| Real Wage Index | Derived | Follows Wage Index lag — computed from Wage Index and CPI index level (base 1988=100) |
+| Affordability Ratio | Derived | Follows the longer of HPI and Wage Index lag — computed from HPI ÷ Wage Index |
 
 This means the KPI cards may not all reference the same month. This is not a pipeline issue — it reflects when official statistics are actually published. Re-running the master pipeline will always pull the most recently available figures.
 
@@ -119,7 +121,7 @@ flowchart TD
 | **Gold** | Kimball Star Schema — one fact table and four dimension tables. |
 | **Quality** | Great Expectations validation gate. Semantic Model refresh only triggers on success. |
 | **Semantic Model** | Direct Lake connectivity over Gold Delta tables. |
-| **Dashboard** | Power BI report visualizing all six indicators across the three crisis periods. |
+| **Dashboard** | Power BI report visualizing all seven indicators across the three crisis periods. |
 
 ---
 
@@ -257,6 +259,8 @@ erDiagram
 | `gdp_yoy_growth` | GDP Year-on-Year Growth | Percent (%) | Hagstofa |
 | `hpi` | House Price Index | Index (Mar 2000=100) | Hagstofa |
 | `wage_index` | Wage Index | Index (Dec 1988=100) | Hagstofa |
+| `real_wage_index` | Real Wage Index (CPI-deflated) | Index (CPI-deflated) | Derived |
+| `affordability_ratio` | Affordability Ratio (HPI ÷ Wage Index) | Ratio | Derived |
 
 ### `gold.dim_date`
 
@@ -268,7 +272,7 @@ Standard daily date spine (1980–2030) with full calendar attributes.
 
 ## Semantic Model (Direct Lake)
 
-The project utilizes a **Direct Lake** semantic model for high-performance analytics, loading Delta Parquet files directly from OneLake into memory.
+A **Direct Lake** semantic model connects Power BI directly to the Gold Delta tables in OneLake — import-mode performance without a data copy.
 
 <div align="center">
 
@@ -294,6 +298,7 @@ The DAX measures used in the dashboard can be found in `semantic_model/measures.
 | **Gatekeeper pattern** | Semantic Model refresh is conditional on GX success. Failures halt before unverified data reaches the dashboard. |
 | **Crisis period in dim_date** | `crisis_period` and `is_crisis_period` columns enable Power BI shaded bands with no DAX required. |
 | **Wide date spine** | `dim_date` spans 1990–2030, supporting future backfill without a schema change. |
+| **Derived indicators in pipeline** | `real_wage_index` (Wage Index ÷ CPI index level × 100) and `affordability_ratio` (HPI ÷ Wage Index) pre-computed in the Gold fact notebook. Keeps DAX simple and avoids divergence between visuals. |
 
 ---
 

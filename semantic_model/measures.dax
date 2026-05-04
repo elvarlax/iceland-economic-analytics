@@ -9,7 +9,7 @@
 // ================================================================
 
 
-// ── Page 1: Time-Series Measures ─────────────────────────────────
+// ── Page 1: Time-Series & KPI Card Measures ──────────────────────
 
 // Central Bank policy rate (end-of-period, % p.a.).
 Policy Rate =
@@ -20,53 +20,6 @@ DIVIDE(
     ),
     100
 )
-
-// Year-on-year CPI inflation rate — pre-computed by the pipeline.
-CPI Inflation (YoY) =
-DIVIDE(
-    CALCULATE(
-        AVERAGE('fact_monthly_economics'[value]),
-        'dim_indicator'[indicator_code] = "cpi"
-    ),
-    100
-)
-
-// ISK per 1 EUR — a higher value indicates a weaker króna.
-ISK/EUR Rate =
-CALCULATE(
-    AVERAGE('fact_monthly_economics'[value]),
-    'dim_indicator'[indicator_code] = "iskeur"
-)
-
-// Year-on-year GDP growth rate — pre-computed by the pipeline.
-GDP Growth (YoY) =
-DIVIDE(
-    CALCULATE(
-        AVERAGE('fact_monthly_economics'[value]),
-        'dim_indicator'[indicator_code] = "gdp_yoy_growth"
-    ),
-    100
-)
-
-// House Price Index (base: March 2000 = 100).
-House Price Index =
-CALCULATE(
-    AVERAGE('fact_monthly_economics'[value]),
-    'dim_indicator'[indicator_code] = "hpi"
-)
-
-// Wage Index (base: December 1988 = 100).
-Wage Index =
-CALCULATE(
-    AVERAGE('fact_monthly_economics'[value]),
-    'dim_indicator'[indicator_code] = "wage_index"
-)
-
-
-// ── KPI Card Measures (latest available month) ────────────────────
-// Use these on KPI cards so they show the most recent data point
-// rather than the full-period average. LASTNONBLANK returns the last
-// date that has a non-blank value for the given indicator.
 
 Policy Rate (Latest) =
 VAR _lastKey =
@@ -80,6 +33,16 @@ DIVIDE(
         AVERAGE('fact_monthly_economics'[value]),
         'dim_indicator'[indicator_code] = "policy_rate",
         'fact_monthly_economics'[date_key] = _lastKey
+    ),
+    100
+)
+
+// Year-on-year CPI inflation rate — pre-computed by the pipeline.
+CPI Inflation (YoY) =
+DIVIDE(
+    CALCULATE(
+        AVERAGE('fact_monthly_economics'[value]),
+        'dim_indicator'[indicator_code] = "cpi"
     ),
     100
 )
@@ -100,6 +63,13 @@ DIVIDE(
     100
 )
 
+// ISK per 1 EUR — a higher value indicates a weaker króna.
+ISK/EUR Rate =
+CALCULATE(
+    AVERAGE('fact_monthly_economics'[value]),
+    'dim_indicator'[indicator_code] = "iskeur"
+)
+
 ISK/EUR Rate (Latest) =
 VAR _lastKey =
     CALCULATE(
@@ -111,6 +81,16 @@ CALCULATE(
     AVERAGE('fact_monthly_economics'[value]),
     'dim_indicator'[indicator_code] = "iskeur",
     'fact_monthly_economics'[date_key] = _lastKey
+)
+
+// Year-on-year GDP growth rate — pre-computed by the pipeline.
+GDP Growth (YoY) =
+DIVIDE(
+    CALCULATE(
+        AVERAGE('fact_monthly_economics'[value]),
+        'dim_indicator'[indicator_code] = "gdp_yoy_growth"
+    ),
+    100
 )
 
 GDP Growth (Latest) =
@@ -129,6 +109,13 @@ DIVIDE(
     100
 )
 
+// House Price Index (base: March 2000 = 100).
+House Price Index =
+CALCULATE(
+    AVERAGE('fact_monthly_economics'[value]),
+    'dim_indicator'[indicator_code] = "hpi"
+)
+
 House Price Index (Latest) =
 VAR _lastKey =
     CALCULATE(
@@ -142,6 +129,13 @@ CALCULATE(
     'fact_monthly_economics'[date_key] = _lastKey
 )
 
+// Wage Index (base: December 1988 = 100).
+Wage Index =
+CALCULATE(
+    AVERAGE('fact_monthly_economics'[value]),
+    'dim_indicator'[indicator_code] = "wage_index"
+)
+
 Wage Index (Latest) =
 VAR _lastKey =
     CALCULATE(
@@ -152,6 +146,26 @@ RETURN
 CALCULATE(
     AVERAGE('fact_monthly_economics'[value]),
     'dim_indicator'[indicator_code] = "wage_index",
+    'fact_monthly_economics'[date_key] = _lastKey
+)
+
+// Real Wage Index — Wage Index deflated by CPI (base: Dec 1988 = 100).
+Real Wage Index =
+CALCULATE(
+    AVERAGE('fact_monthly_economics'[value]),
+    'dim_indicator'[indicator_code] = "real_wage_index"
+)
+
+Real Wage Index (Latest) =
+VAR _lastKey =
+    CALCULATE(
+        MAX('fact_monthly_economics'[date_key]),
+        'dim_indicator'[indicator_code] = "real_wage_index"
+    )
+RETURN
+CALCULATE(
+    AVERAGE('fact_monthly_economics'[value]),
+    'dim_indicator'[indicator_code] = "real_wage_index",
     'fact_monthly_economics'[date_key] = _lastKey
 )
 
@@ -199,16 +213,17 @@ CALCULATE(
     'dim_indicator'[indicator_code] = "iskeur"
 )
 
+// Lowest real wage recorded within the filtered crisis period.
+Worst Real Wage Index =
+CALCULATE(
+    MIN('fact_monthly_economics'[value]),
+    'dim_indicator'[indicator_code] = "real_wage_index"
+)
+
 // HPI divided by Wage Index — a rising ratio means housing costs
 // are outpacing wages (lower = more affordable).
 Affordability Ratio =
-DIVIDE(
-    CALCULATE(
-        AVERAGE('fact_monthly_economics'[value]),
-        'dim_indicator'[indicator_code] = "hpi"
-    ),
-    CALCULATE(
-        AVERAGE('fact_monthly_economics'[value]),
-        'dim_indicator'[indicator_code] = "wage_index"
-    )
+CALCULATE(
+    AVERAGE('fact_monthly_economics'[value]),
+    'dim_indicator'[indicator_code] = "affordability_ratio"
 )
