@@ -77,7 +77,7 @@ This is Microsoft's [Pattern 2](https://learn.microsoft.com/fabric/onelake/onela
 
 ### Pipeline
 
-`pl_load_iceland_economy` runs the whole load as one dependency graph:
+`pl_load_iceland_economy` runs the whole load as one dependency graph. The exported definition is in [`pipeline/pl_load_iceland_economy.json`](pipeline/pl_load_iceland_economy.json); item and workspace IDs, the connection and the alert recipient are replaced by placeholders.
 
 ```mermaid
 flowchart LR
@@ -231,6 +231,7 @@ A manual check of Bronze found no unparseable dates and no empty values in the C
 ├── notebooks/                          # Lakehouse: Bronze in PySpark, Silver in Spark SQL
 │   ├── bronze/                               # PySpark: API ingestion, full or incremental
 │   └── silver/                               # Spark SQL: CREATE TABLE IF NOT EXISTS + MERGE
+├── pipeline/                           # Pipeline definition (JSON), IDs replaced by placeholders
 ├── warehouse/                          # Warehouse (T-SQL)
 │   ├── 01_tables.sql                         # dim_date, two fact tables, dq_logs
 │   ├── 02_load_procedures.sql                # MERGE procedure per table

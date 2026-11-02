@@ -1,0 +1,242 @@
+{
+    "name": "pl_load_iceland_economy",
+    "properties": {
+        "activities": [
+            {
+                "name": "bronze_setup",
+                "type": "TridentNotebook",
+                "dependsOn": [],
+                "policy": {
+                    "timeout": "0.12:00:00",
+                    "retry": 0,
+                    "retryIntervalInSeconds": 30,
+                    "secureOutput": false,
+                    "secureInput": false
+                },
+                "typeProperties": {
+                    "notebookId": "<notebook-id: nb_bronze_setup>",
+                    "workspaceId": "<workspace-id>",
+                    "sessionTag": "iceland_economy"
+                }
+            },
+            {
+                "name": "bronze_central_bank",
+                "type": "TridentNotebook",
+                "dependsOn": [
+                    {
+                        "activity": "bronze_setup",
+                        "dependencyConditions": [
+                            "Succeeded"
+                        ]
+                    }
+                ],
+                "policy": {
+                    "timeout": "0.12:00:00",
+                    "retry": 1,
+                    "retryIntervalInSeconds": 60,
+                    "secureOutput": false,
+                    "secureInput": false
+                },
+                "typeProperties": {
+                    "notebookId": "<notebook-id: nb_bronze_central_bank>",
+                    "workspaceId": "<workspace-id>",
+                    "parameters": {
+                        "load_mode": {
+                            "value": {
+                                "value": "@pipeline().parameters.load_mode",
+                                "type": "Expression"
+                            },
+                            "type": "string"
+                        }
+                    },
+                    "sessionTag": "iceland_economy"
+                }
+            },
+            {
+                "name": "bronze_statistics_iceland",
+                "type": "TridentNotebook",
+                "dependsOn": [
+                    {
+                        "activity": "bronze_setup",
+                        "dependencyConditions": [
+                            "Succeeded"
+                        ]
+                    }
+                ],
+                "policy": {
+                    "timeout": "0.12:00:00",
+                    "retry": 1,
+                    "retryIntervalInSeconds": 60,
+                    "secureOutput": false,
+                    "secureInput": false
+                },
+                "typeProperties": {
+                    "notebookId": "<notebook-id: nb_bronze_statistics_iceland>",
+                    "workspaceId": "<workspace-id>",
+                    "parameters": {
+                        "load_mode": {
+                            "value": {
+                                "value": "@pipeline().parameters.load_mode",
+                                "type": "Expression"
+                            },
+                            "type": "string"
+                        }
+                    },
+                    "sessionTag": "iceland_economy"
+                }
+            },
+            {
+                "name": "silver_central_bank",
+                "type": "TridentNotebook",
+                "dependsOn": [
+                    {
+                        "activity": "bronze_central_bank",
+                        "dependencyConditions": [
+                            "Succeeded"
+                        ]
+                    }
+                ],
+                "policy": {
+                    "timeout": "0.12:00:00",
+                    "retry": 0,
+                    "retryIntervalInSeconds": 30,
+                    "secureOutput": false,
+                    "secureInput": false
+                },
+                "typeProperties": {
+                    "notebookId": "<notebook-id: nb_silver_central_bank>",
+                    "workspaceId": "<workspace-id>",
+                    "sessionTag": "iceland_economy"
+                }
+            },
+            {
+                "name": "silver_statistics_gdp",
+                "type": "TridentNotebook",
+                "dependsOn": [
+                    {
+                        "activity": "bronze_statistics_iceland",
+                        "dependencyConditions": [
+                            "Succeeded"
+                        ]
+                    }
+                ],
+                "policy": {
+                    "timeout": "0.12:00:00",
+                    "retry": 0,
+                    "retryIntervalInSeconds": 30,
+                    "secureOutput": false,
+                    "secureInput": false
+                },
+                "typeProperties": {
+                    "notebookId": "<notebook-id: nb_silver_statistics_gdp>",
+                    "workspaceId": "<workspace-id>",
+                    "sessionTag": "iceland_economy"
+                }
+            },
+            {
+                "name": "silver_statistics_monthly",
+                "type": "TridentNotebook",
+                "dependsOn": [
+                    {
+                        "activity": "bronze_statistics_iceland",
+                        "dependencyConditions": [
+                            "Succeeded"
+                        ]
+                    }
+                ],
+                "policy": {
+                    "timeout": "0.12:00:00",
+                    "retry": 0,
+                    "retryIntervalInSeconds": 30,
+                    "secureOutput": false,
+                    "secureInput": false
+                },
+                "typeProperties": {
+                    "notebookId": "<notebook-id: nb_silver_statistics_monthly>",
+                    "workspaceId": "<workspace-id>",
+                    "sessionTag": "iceland_economy"
+                }
+            },
+            {
+                "name": "gold_load",
+                "type": "SqlServerStoredProcedure",
+                "dependsOn": [
+                    {
+                        "activity": "silver_central_bank",
+                        "dependencyConditions": [
+                            "Succeeded"
+                        ]
+                    },
+                    {
+                        "activity": "silver_statistics_gdp",
+                        "dependencyConditions": [
+                            "Succeeded"
+                        ]
+                    },
+                    {
+                        "activity": "silver_statistics_monthly",
+                        "dependencyConditions": [
+                            "Succeeded"
+                        ]
+                    }
+                ],
+                "policy": {
+                    "timeout": "0.12:00:00",
+                    "retry": 0,
+                    "retryIntervalInSeconds": 30,
+                    "secureOutput": false,
+                    "secureInput": false
+                },
+                "typeProperties": {
+                    "storedProcedureName": "[gold].[load_gold]"
+                },
+                "linkedService": {
+                    "name": "wh_iceland_economy",
+                    "properties": {
+                        "annotations": [],
+                        "type": "DataWarehouse",
+                        "typeProperties": {
+                            "endpoint": "<warehouse-sql-endpoint>",
+                            "artifactId": "<warehouse-id: wh_iceland_economy>",
+                            "workspaceId": "<workspace-id>"
+                        }
+                    }
+                }
+            },
+            {
+                "name": "alert_on_failure",
+                "type": "Office365Email",
+                "dependsOn": [
+                    {
+                        "activity": "gold_load",
+                        "dependencyConditions": [
+                            "Failed",
+                            "Skipped"
+                        ]
+                    }
+                ],
+                "policy": {
+                    "timeout": "0.12:00:00",
+                    "retry": 0,
+                    "retryIntervalInSeconds": 30,
+                    "secureOutput": false,
+                    "secureInput": false
+                },
+                "typeProperties": {
+                    "to": "<alert-recipient>",
+                    "subject": "pl_load_iceland_economy failed",
+                    "body": "<p>&nbsp;&nbsp;Pipeline @{pipeline().Pipeline} failed or was stopped before gold_load.</p>\n<p>&nbsp;&nbsp;Run ID: @{pipeline().RunId}</p>\n<p>&nbsp;&nbsp;Time (UTC): @{utcNow()}</p>\n<p>&nbsp;&nbsp;Check Monitor and gold.dq_logs in wh_iceland_economy.</p>"
+                },
+                "externalReferences": {
+                    "connection": "<connection-id>"
+                }
+            }
+        ],
+        "parameters": {
+            "load_mode": {
+                "type": "string",
+                "defaultValue": "incremental"
+            }
+        }
+    }
+}
