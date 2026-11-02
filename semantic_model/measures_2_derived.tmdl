@@ -1,0 +1,150 @@
+// ================================================================
+// Iceland Economic Analytics: measures for sm_iceland_economy (TMDL)
+// Part 2 of 2: derived measures (Latest and Period Comparison folders).
+// Apply after measures_1_base.tmdl. Re-running is safe.
+// ================================================================
+createOrReplace
+
+	ref table fact_economic_indicators_monthly
+
+		/// Inflation (12-Month) in the latest month with data, within the current filters.
+		measure 'Inflation (Latest)' =
+				VAR _lastDate = CALCULATE(MAX(fact_economic_indicators_monthly[date_key]), NOT ISBLANK(fact_economic_indicators_monthly[inflation_12m_pct]))
+				RETURN CALCULATE([Inflation (12-Month)], fact_economic_indicators_monthly[date_key] = _lastDate)
+			formatString: 0.00%
+			displayFolder: Latest
+
+		/// Key Interest Rate in the latest month with data, within the current filters.
+		measure 'Key Interest Rate (Latest)' =
+				VAR _lastDate = CALCULATE(MAX(fact_economic_indicators_monthly[date_key]), NOT ISBLANK(fact_economic_indicators_monthly[key_interest_rate_pct]))
+				RETURN CALCULATE([Key Interest Rate], fact_economic_indicators_monthly[date_key] = _lastDate)
+			formatString: 0.00%
+			displayFolder: Latest
+
+		/// Unemployment Rate in the latest month with data, within the current filters.
+		measure 'Unemployment Rate (Latest)' =
+				VAR _lastDate = CALCULATE(MAX(fact_economic_indicators_monthly[date_key]), NOT ISBLANK(fact_economic_indicators_monthly[unemployment_rate_pct]))
+				RETURN CALCULATE([Unemployment Rate], fact_economic_indicators_monthly[date_key] = _lastDate)
+			formatString: 0.00%
+			displayFolder: Latest
+
+		/// ISK/EUR Rate in the latest month with data, within the current filters.
+		measure 'ISK/EUR Rate (Latest)' =
+				VAR _lastDate = CALCULATE(MAX(fact_economic_indicators_monthly[date_key]), NOT ISBLANK(fact_economic_indicators_monthly[isk_per_eur]))
+				RETURN CALCULATE([ISK/EUR Rate], fact_economic_indicators_monthly[date_key] = _lastDate)
+			formatString: #,0.0
+			displayFolder: Latest
+
+		/// ISK/USD Rate in the latest month with data, within the current filters.
+		measure 'ISK/USD Rate (Latest)' =
+				VAR _lastDate = CALCULATE(MAX(fact_economic_indicators_monthly[date_key]), NOT ISBLANK(fact_economic_indicators_monthly[isk_per_usd]))
+				RETURN CALCULATE([ISK/USD Rate], fact_economic_indicators_monthly[date_key] = _lastDate)
+			formatString: #,0.0
+			displayFolder: Latest
+
+		/// House Price Index in the latest month with data, within the current filters.
+		measure 'House Price Index (Latest)' =
+				VAR _lastDate = CALCULATE(MAX(fact_economic_indicators_monthly[date_key]), NOT ISBLANK(fact_economic_indicators_monthly[house_price_index]))
+				RETURN CALCULATE([House Price Index], fact_economic_indicators_monthly[date_key] = _lastDate)
+			formatString: #,0.0
+			displayFolder: Latest
+
+		/// Wage Index in the latest month with data, within the current filters.
+		measure 'Wage Index (Latest)' =
+				VAR _lastDate = CALCULATE(MAX(fact_economic_indicators_monthly[date_key]), NOT ISBLANK(fact_economic_indicators_monthly[wage_index]))
+				RETURN CALCULATE([Wage Index], fact_economic_indicators_monthly[date_key] = _lastDate)
+			formatString: #,0.0
+			displayFolder: Latest
+
+		/// The month of the latest Inflation (12-Month) value as text, for example Sep 2026.
+		measure 'Inflation (Latest Month)' =
+				VAR _lastDate = CALCULATE(MAX(fact_economic_indicators_monthly[date_key]), NOT ISBLANK(fact_economic_indicators_monthly[inflation_12m_pct]))
+				RETURN IF(NOT ISBLANK(_lastDate), FORMAT(DATE(INT(_lastDate / 10000), MOD(INT(_lastDate / 100), 100), 1), "MMM yyyy"))
+			displayFolder: Latest
+
+		/// The month of the latest Key Interest Rate value as text, for example Sep 2026.
+		measure 'Key Interest Rate (Latest Month)' =
+				VAR _lastDate = CALCULATE(MAX(fact_economic_indicators_monthly[date_key]), NOT ISBLANK(fact_economic_indicators_monthly[key_interest_rate_pct]))
+				RETURN IF(NOT ISBLANK(_lastDate), FORMAT(DATE(INT(_lastDate / 10000), MOD(INT(_lastDate / 100), 100), 1), "MMM yyyy"))
+			displayFolder: Latest
+
+		/// The month of the latest Unemployment Rate value as text, for example Sep 2026.
+		measure 'Unemployment Rate (Latest Month)' =
+				VAR _lastDate = CALCULATE(MAX(fact_economic_indicators_monthly[date_key]), NOT ISBLANK(fact_economic_indicators_monthly[unemployment_rate_pct]))
+				RETURN IF(NOT ISBLANK(_lastDate), FORMAT(DATE(INT(_lastDate / 10000), MOD(INT(_lastDate / 100), 100), 1), "MMM yyyy"))
+			displayFolder: Latest
+
+		/// The month of the latest ISK/EUR Rate value as text, for example Sep 2026.
+		measure 'ISK/EUR Rate (Latest Month)' =
+				VAR _lastDate = CALCULATE(MAX(fact_economic_indicators_monthly[date_key]), NOT ISBLANK(fact_economic_indicators_monthly[isk_per_eur]))
+				RETURN IF(NOT ISBLANK(_lastDate), FORMAT(DATE(INT(_lastDate / 10000), MOD(INT(_lastDate / 100), 100), 1), "MMM yyyy"))
+			displayFolder: Latest
+
+		/// The month of the latest ISK/USD Rate value as text, for example Sep 2026.
+		measure 'ISK/USD Rate (Latest Month)' =
+				VAR _lastDate = CALCULATE(MAX(fact_economic_indicators_monthly[date_key]), NOT ISBLANK(fact_economic_indicators_monthly[isk_per_usd]))
+				RETURN IF(NOT ISBLANK(_lastDate), FORMAT(DATE(INT(_lastDate / 10000), MOD(INT(_lastDate / 100), 100), 1), "MMM yyyy"))
+			displayFolder: Latest
+
+		/// The month of the latest House Price Index value as text, for example Sep 2026.
+		measure 'House Price Index (Latest Month)' =
+				VAR _lastDate = CALCULATE(MAX(fact_economic_indicators_monthly[date_key]), NOT ISBLANK(fact_economic_indicators_monthly[house_price_index]))
+				RETURN IF(NOT ISBLANK(_lastDate), FORMAT(DATE(INT(_lastDate / 10000), MOD(INT(_lastDate / 100), 100), 1), "MMM yyyy"))
+			displayFolder: Latest
+
+		/// The month of the latest Wage Index value as text, for example Sep 2026.
+		measure 'Wage Index (Latest Month)' =
+				VAR _lastDate = CALCULATE(MAX(fact_economic_indicators_monthly[date_key]), NOT ISBLANK(fact_economic_indicators_monthly[wage_index]))
+				RETURN IF(NOT ISBLANK(_lastDate), FORMAT(DATE(INT(_lastDate / 10000), MOD(INT(_lastDate / 100), 100), 1), "MMM yyyy"))
+			displayFolder: Latest
+
+		/// Highest 12-month inflation in the selected period.
+		measure 'Peak Inflation' =
+				DIVIDE(MAX(fact_economic_indicators_monthly[inflation_12m_pct]), 100)
+			formatString: 0.00%
+			displayFolder: Period Comparison
+
+		/// Highest key interest rate in the selected period.
+		measure 'Peak Key Interest Rate' =
+				DIVIDE(MAX(fact_economic_indicators_monthly[key_interest_rate_pct]), 100)
+			formatString: 0.00%
+			displayFolder: Period Comparison
+
+		/// Highest unemployment rate in the selected period.
+		measure 'Peak Unemployment Rate' =
+				DIVIDE(MAX(fact_economic_indicators_monthly[unemployment_rate_pct]), 100)
+			formatString: 0.00%
+			displayFolder: Period Comparison
+
+		/// Highest monthly ISK/EUR rate in the selected period.
+		measure 'Peak ISK/EUR' =
+				MAX(fact_economic_indicators_monthly[isk_per_eur])
+			formatString: #,0.0
+			displayFolder: Period Comparison
+
+		/// Wage Index in the latest month with data, formatted as text for the report card
+		/// (the card visual abbreviates large numbers, for example 1157.7 as 1.2K).
+		measure 'Wage Index (Latest Text)' =
+				FORMAT([Wage Index (Latest)], "#,0.0")
+			displayFolder: Latest
+
+	ref table fact_gdp_quarterly
+
+		/// GDP Growth (YoY) in the latest quarter with data, within the current filters.
+		measure 'GDP Growth (Latest)' =
+				VAR _lastDate = CALCULATE(MAX(fact_gdp_quarterly[date_key]), NOT ISBLANK(fact_gdp_quarterly[gdp_growth_yoy_pct]))
+				RETURN CALCULATE([GDP Growth (YoY)], fact_gdp_quarterly[date_key] = _lastDate)
+			formatString: 0.00%
+			displayFolder: Latest
+
+		/// The quarter of the latest GDP value as text, for example Q2 2026.
+		measure 'GDP Growth (Latest Quarter)' =
+				VAR _lastDate = CALCULATE(MAX(fact_gdp_quarterly[date_key]), NOT ISBLANK(fact_gdp_quarterly[gdp_growth_yoy_pct]))
+				RETURN IF(NOT ISBLANK(_lastDate), "Q" & QUOTIENT(MOD(INT(_lastDate / 100), 100) + 2, 3) & " " & INT(_lastDate / 10000))
+			displayFolder: Latest
+
+		/// Lowest quarterly GDP growth in the selected period.
+		measure 'Lowest GDP Growth' =
+				DIVIDE(MIN(fact_gdp_quarterly[gdp_growth_yoy_pct]), 100)
+			formatString: 0.00%
+			displayFolder: Period Comparison

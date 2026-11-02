@@ -1,0 +1,54 @@
+{
+  "name": "Iceland Economic Analytics v2",
+  "dataColors": ["#1F4E79", "#F59E0B", "#0F766E", "#64748B", "#0EA5E9", "#8B5CF6", "#DC2626", "#14B8A6"],
+  "background": "#FFFFFF",
+  "foreground": "#0F172A",
+  "tableAccent": "#1F4E79",
+  "good": "#0F766E",
+  "bad": "#B91C1C",
+  "neutral": "#64748B",
+  "textClasses": {
+    "title":   { "fontFace": "Segoe UI Semibold", "fontSize": 16, "color": "#0F172A" },
+    "label":   { "fontFace": "Segoe UI", "fontSize": 13, "color": "#64748B" },
+    "callout": { "fontFace": "Segoe UI Semibold", "fontSize": 36, "color": "#0F172A" },
+    "header":  { "fontFace": "Segoe UI Semibold", "fontSize": 16, "color": "#0F172A" }
+  },
+  "visualStyles": {
+    "page": {
+      "*": {
+        "background": [{ "color": { "solid": { "color": "#F1F5F9" } }, "transparency": 0 }],
+        "outspace":   [{ "color": { "solid": { "color": "#E2E8F0" } } }]
+      }
+    },
+    "*": {
+      "*": {
+        "title":    [{ "show": true, "fontColor": { "solid": { "color": "#0F172A" } }, "fontSize": 16, "fontFamily": "Segoe UI Semibold" }],
+        "subTitle": [{ "fontColor": { "solid": { "color": "#64748B" } }, "fontSize": 13, "fontFamily": "Segoe UI" }],
+        "background": [{ "show": true, "color": { "solid": { "color": "#FFFFFF" } }, "transparency": 0 }],
+        "border":   [{ "show": true, "color": { "solid": { "color": "#E2E8F0" } }, "radius": 10 }],
+        "dropShadow": [{ "show": false }]
+      }
+    },
+    "lineChart": {
+      "*": {
+        "lineStyles": [{ "strokeWidth": 2.5, "showMarker": false, "shadeArea": true }],
+        "legend": [{ "show": true, "position": "TopRight", "fontSize": 13, "labelColor": { "solid": { "color": "#64748B" } } }],
+        "categoryAxis": [{ "fontSize": 13, "labelColor": { "solid": { "color": "#64748B" } }, "showAxisTitle": false }],
+        "valueAxis": [{ "fontSize": 13, "labelColor": { "solid": { "color": "#64748B" } }, "showAxisTitle": false, "gridlineColor": { "solid": { "color": "#E2E8F0" } } }]
+      }
+    },
+    "columnChart": {
+      "*": {
+        "legend": [{ "show": false }],
+        "categoryAxis": [{ "fontSize": 13, "labelColor": { "solid": { "color": "#64748B" } }, "showAxisTitle": false }],
+        "valueAxis": [{ "fontSize": 13, "labelColor": { "solid": { "color": "#64748B" } }, "showAxisTitle": false, "gridlineColor": { "solid": { "color": "#E2E8F0" } } }]
+      }
+    },
+    "slicer": {
+      "*": {
+        "header": [{ "show": false }],
+        "items":  [{ "fontSize": 14, "fontColor": { "solid": { "color": "#0F172A" } }, "background": { "solid": { "color": "#F8FAFC" } } }]
+      }
+    }
+  }
+}

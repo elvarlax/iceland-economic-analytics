@@ -1,0 +1,15 @@
+// ================================================================
+// Relationships for sm_iceland_economy (TMDL)
+// A semantic model created from the warehouse does not detect these from
+// the NOT ENFORCED foreign keys, so apply this script first.
+// Both are many-to-one, single direction, date -> fact.
+// ================================================================
+createOrReplace
+
+	relationship fact_economic_indicators_monthly_to_dim_date
+		fromColumn: fact_economic_indicators_monthly.date_key
+		toColumn: dim_date.date_key
+
+	relationship fact_gdp_quarterly_to_dim_date
+		fromColumn: fact_gdp_quarterly.date_key
+		toColumn: dim_date.date_key

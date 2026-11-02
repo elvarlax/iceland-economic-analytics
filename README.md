@@ -1,338 +1,265 @@
 # Iceland Economic Analytics
 
-An end-to-end Microsoft Fabric data engineering pipeline tracking Iceland's economic performance across three major crises: the 2008 banking collapse, the 2020 pandemic, and the 2022–2026 inflation and volcanic period.
+A Microsoft Fabric project that loads monthly economic indicators for Iceland from the Central Bank of Iceland and Statistics Iceland, models them in a Fabric Data Warehouse, and serves them through a Direct Lake semantic model and a Power BI report.
 
-Built as a portfolio project for the **Microsoft Certified: Fabric Data Engineer Associate (DP-700)** certification.
+A portfolio project that follows the skill areas of **DP-600** (Fabric Analytics Engineer) and **DP-700** (Fabric Data Engineer).
 
----
-
-## Overview
-
-Iceland has faced three major economic crises in 18 years:
-
-*   **2008** — The entire banking system collapsed overnight.
-*   **2020** — Tourism vanished and GDP cratered.
-*   **2022–2026** — Inflation hit 10%, interest rates reached 9.25%, and volcanic eruptions displaced thousands.
-
-Official data from **Seðlabanki Íslands** (Central Bank of Iceland) and **Hagstofa Íslands** (Statistics Iceland) is ingested into Microsoft Fabric and transformed through a Bronze → Silver → Gold medallion pipeline into a Kimball star schema, served by a Power BI Direct Lake semantic model.
+| Area | Where |
+|---|---|
+| API ingestion (full and incremental) and Spark transformations | [`notebooks/`](notebooks) |
+| Orchestration: pipeline DAG with shared Spark session | [Pipeline](#pipeline) |
+| Star schema, T-SQL load procedures, transactions | [`warehouse/01–03`](warehouse) |
+| Data quality gate with rollback | [`warehouse/03_validate_and_run.sql`](warehouse/03_validate_and_run.sql) |
+| Least-privilege security and monitoring | [`warehouse/04_security.sql`](warehouse/04_security.sql), [`05_monitoring.sql`](warehouse/05_monitoring.sql) |
+| Direct Lake semantic model, DAX and TMDL | [`semantic_model/`](semantic_model) |
+| Design decisions and data validation | [Design Decisions](#design-decisions), [Data Validation](#data-validation) |
 
 ---
 
-## Dashboard
+## Data
 
-<div align="center">
+Eight indicators, monthly, with the full history each source publishes (Central Bank series from 1990):
 
-### Page 1 — The Three Crises
-*CPI vs Policy Rate, GDP Growth, ISK/EUR — full timeline 2008–2026 with crisis period filter*
-
-The seven KPI cards at the top display the **latest available value** for each indicator, sourced directly from the Seðlabanki and Hagstofa APIs via the `(Latest)` DAX measures.
-
-![Dashboard Page 1 — The Three Crises](assets/dashboard_crisis_overview.png)
-
-### Page 2 — Crisis Head-to-Head
-*Peak indicators compared across Banking Collapse, Pandemic, and Inflation & Volcanic periods*
-
-The matrix table shows peak stress indicators for each crisis period — highest CPI, highest policy rate, worst quarterly GDP growth, and peak ISK/EUR rate. The four charts below track House Price Index, Wage Index, Real Wage Index, and the Affordability Ratio (HPI ÷ Wage Index) across the full 2008–2026 timeline.
-
-![Dashboard Page 2 — Crisis Head-to-Head](assets/dashboard_crisis_comparison.png)
-
-</div>
-
----
-
-## Data Sources
-
-| Source | Data | Frequency |
+| Indicator | Source | Unit |
 |---|---|---|
-| [Seðlabanki Íslands](https://sedlabanki.is) — XML API | Policy rate, CPI inflation (YoY %), CPI index level (base 1988=100), ISK/EUR exchange rate | Daily / Monthly |
-| [Hagstofa Íslands](https://hagstofa.is) — PX-Web REST API | GDP YoY growth (quarterly), House Price Index, Wage Index | Monthly / Quarterly |
+| Inflation: consumer price index, 12-month change | Central Bank of Iceland (XML API) | % |
+| Key interest rate | Central Bank of Iceland | % per year |
+| Unemployment rate, Labour Force Survey (trend) | Statistics Iceland (PX-Web API) | % |
+| GDP, annual change by quarter (gross domestic product) | Statistics Iceland | % |
+| Exchange rate, EUR (monthly average of daily rates) | Central Bank of Iceland | ISK per EUR |
+| Exchange rate, USD (monthly average of daily rates) | Central Bank of Iceland | ISK per USD |
+| Market price index of residential housing, whole country | Statistics Iceland | Index |
+| Wage index, monthly | Statistics Iceland | Index |
 
-All data is sourced directly from official Icelandic institutions.
+No derived indicators: the only processing is a monthly average of daily exchange rates and the last key interest rate in each month. Each source publishes on its own schedule (GDP about 6–8 weeks after quarter end, house prices and wages about 2 months after the month, unemployment from 2003), so the latest month differs between indicators.
 
-**Publication lag:** KPI cards show the latest value available in the API at the time the pipeline was last run. Each indicator publishes on its own schedule:
+`dim_date[analysis_period]` groups months into three comparison periods, labelled by year only: `2008-2011`, `2020-2021` and `2022-2026`; all other months are `Other`.
 
-| Indicator | Publisher | Lag |
-|---|---|---|
-| Policy Rate | Seðlabanki | No lag — updated immediately on rate decision days (8 times/year) |
-| CPI Inflation | Seðlabanki | Published at the end of each reference month — typically 2–4 weeks |
-| ISK/EUR Rate | Seðlabanki | No lag — daily data, always current |
-| GDP Growth | Hagstofa | ~6–8 weeks after quarter end |
-| House Price Index | Hagstofa | ~2 months behind the reference month |
-| Wage Index | Hagstofa | ~2 months behind the reference month |
-| Real Wage Index | Derived | Follows Wage Index lag — computed from Wage Index and CPI index level (base 1988=100) |
-| Affordability Ratio | Derived | Follows the longer of HPI and Wage Index lag — computed from HPI ÷ Wage Index |
+---
 
-This means the KPI cards may not all reference the same month. This is not a pipeline issue — it reflects when official statistics are actually published. Re-running the master pipeline will always pull the most recently available figures.
+## Report
+
+![Key indicators](assets/dashboard_overview.png)
+
+**Key indicators.** Eight KPI cards with the latest value and its month (inflation, key interest rate, unemployment, GDP growth, ISK/EUR, ISK/USD, house prices, wages), inflation and the key interest rate over time, and unemployment, GDP growth and exchange rates below, with a period filter.
+
+![Period comparison](assets/dashboard_comparison.png)
+
+**Period comparison.** Highest and lowest values in each analysis period, and the house price and wage indexes over time.
 
 ---
 
 ## Architecture
 
-Data flows through a Medallion architecture with a **Great Expectations quality gate** before triggering a Semantic Model refresh.
-
-<div align="center">
-
 ```mermaid
-flowchart TD
-    classDef b fill:#fdeff4,stroke:#bbb,stroke-width:1px
-    classDef s fill:#f5f5f5,stroke:#bbb,stroke-width:1px
-    classDef g fill:#fffcf2,stroke:#b8860b,stroke-width:1px
-    classDef q fill:#f0fff4,stroke:#2d7a37,stroke-width:1px
-    classDef sm fill:#eef2ff,stroke:#4466cc,stroke-width:1px
-
-    subgraph BRONZE["Bronze — Raw Ingestion"]
-        B1[bronze_central_bank]:::b
-        B2[bronze_statistics_iceland]:::b
+flowchart LR
+    subgraph LH["lh_iceland_economy · Spark"]
+        B[bronze: raw API data] --> S[silver: cleaned Delta tables]
     end
-
-    subgraph SILVER["Silver — Cleansed & Typed"]
-        S1[silver_central_bank]:::s
-        S2[silver_statistics_gdp]:::s
-        S3[silver_statistics_monthly]:::s
+    subgraph WH["wh_iceland_economy · T-SQL"]
+        G[gold: star schema] --> Q{quality gate}
     end
-
-    subgraph GOLD["Gold — Star Schema"]
-        F[(gold_fact_monthly_economics)]:::g
-        D1[gold_dim_date]:::g
-        D2[gold_dim_indicator]:::g
-        D3[gold_dim_source]:::g
-        D4[gold_dim_geography]:::g
-    end
-
-    B1 --> S1
-    B2 --> S2
-    B2 --> S3
-
-    S1 & S2 & S3 --> F
-
-    F --> GX{validate_fact_monthly_economics}:::q
-
-    GX -- Success --> SM[Semantic Model]:::sm
-    D1 & D2 & D3 & D4 --> SM
-    SM --> PBI[Power BI Dashboard]
+    S -- three-part names --> G
+    Q -- pass: commit --> SM[Direct Lake semantic model]
+    Q -- fail: rollback --> X[Gold unchanged]
+    SM --> R[Power BI report]
 ```
 
-</div>
+| Layer | Item | Notes |
+|---|---|---|
+| Bronze | Lakehouse | PySpark: raw API responses, stored as-is |
+| Silver | Lakehouse | Spark SQL: typed, deduplicated Delta tables, loaded with `MERGE` |
+| Gold | Warehouse | T-SQL: Kimball star schema: one conformed date dimension, one fact table per grain; reads Silver in place with three-part names |
+| Semantic model | Direct Lake | DAX measures, prepared for AI |
+| Consumption | Power BI | Measures in the report |
 
-| Layer | Purpose |
-|---|---|
-| **Bronze** | Raw API ingestion. Data is persisted as-is with no transformations. |
-| **Silver** | Cleaned, typed, and deduplicated Delta tables. Includes date parsing and metric mapping. |
-| **Gold** | Kimball Star Schema — one fact table and four dimension tables. |
-| **Quality** | Great Expectations validation gate. Semantic Model refresh only triggers on success. |
-| **Semantic Model** | Direct Lake connectivity over Gold Delta tables. |
-| **Dashboard** | Power BI report visualizing all seven indicators across the three crisis periods. |
+This is Microsoft's [Pattern 2](https://learn.microsoft.com/fabric/onelake/onelake-medallion-lakehouse-architecture#deployment-model): Bronze and Silver in a lakehouse, Gold in a warehouse. Microsoft also suggests a separate workspace per layer for governance. Here everything is in one workspace and Bronze and Silver are schemas in one lakehouse, for two reasons: the warehouse reads Silver with three-part names, which work within a workspace, and the pipeline's notebooks can share one Spark session only when they have the same default lakehouse.
+
+### Pipeline
+
+`pl_load_iceland_economy` runs the whole load as one dependency graph:
+
+```mermaid
+flowchart LR
+    A[nb_bronze_setup] --> B[nb_bronze_central_bank]
+    A --> C[nb_bronze_statistics_iceland]
+    B --> D[nb_silver_central_bank]
+    C --> E[nb_silver_statistics_gdp]
+    C --> F[nb_silver_statistics_monthly]
+    D & E & F --> G[gold.load_gold]
+    G -- on failure --> H[alert]
+```
+
+- **One Spark session.** High concurrency for pipelines is on, and every notebook activity has the same session tag, so the notebooks share one session. A trial capacity has no Spark job queue, so separate sessions that overlap would fail with HTTP 430.
+- **Parallel where possible.** The two Bronze notebooks run side by side; each Silver notebook starts when its Bronze table is ready.
+- **Incremental by default.** The pipeline parameter `load_mode` (`incremental` or `full`) is passed to both Bronze notebooks. Incremental runs read from a watermark with a lookback (Central Bank: the latest date in Bronze minus two months; Statistics Iceland: the last 24 months and 8 quarters through a PX-Web `top` filter) and append; `full` reloads the whole history. Silver keeps the latest version of each observation, so revisions overwrite older values and re-reads never duplicate rows.
+- **Retries** on the two API notebooks (1 retry after 60 seconds).
+- **All or nothing in Gold.** `gold.load_gold` is a stored procedure activity that runs only when all three Silver notebooks succeed.
+
+![Pipeline](assets/pipeline.png)
 
 ---
 
-## Pipeline Orchestration
+## Warehouse
 
-A master Data Factory pipeline orchestrates the full end-to-end flow. The Gold Fact Pipeline implements a **Gatekeeper pattern**: the Semantic Model refresh only executes if `validate_fact_monthly_economics` returns a success status.
+| Script | Contents |
+|---|---|
+| [`01_tables.sql`](warehouse/01_tables.sql) | `gold` schema, dimensions, fact table, `dq_logs`; keys declared `NOT ENFORCED` |
+| [`02_load_procedures.sql`](warehouse/02_load_procedures.sql) | One `MERGE` procedure per table; the monthly fact pivots one row per indicator into one column per indicator; only changed rows are rewritten |
+| [`03_validate_and_run.sql`](warehouse/03_validate_and_run.sql) | Quality gate and `gold.load_gold` |
+| [`04_security.sql`](warehouse/04_security.sql) | Roles `gold_reader` (star schema only) and `gold_loader` (run the load only) |
+| [`05_monitoring.sql`](warehouse/05_monitoring.sql) | Load history, slowest statements and failures from Query Insights and `dq_logs` |
 
-<div align="center">
+**Quality gate.** `gold.load_gold` runs all loads and the checks in one transaction. `gold.validate_gold` checks one row per month and per quarter, keys on the first day of the period, referential integrity to `dim_date`, value ranges per column, that every indicator has data (a renamed source series fails here), volume and completeness. If any check fails, the transaction rolls back, the failure is logged to `gold.dq_logs` and the error is re-thrown so the pipeline fails. This matters with Direct Lake: the model picks up committed data automatically, so bad rows must never be committed.
 
-### Master Pipeline
-![Master Pipeline](assets/master_pipeline.png)
+**Fabric Warehouse notes.** Text is `varchar` (UTF-8), timestamps `datetime2(6)`, keys `NOT ENFORCED` (integrity is checked in the gate), and the date spine uses a cross join instead of a recursive CTE.
 
-### Bronze Pipeline
-![Bronze Pipeline](assets/bronze_pipeline.png)
+### Star schema
 
-### Silver Pipeline
-![Silver Pipeline](assets/silver_pipeline.png)
+```mermaid
+erDiagram
+    dim_date {
+        int date_key PK
+        date full_date
+        smallint year_num
+        varchar quarter_label
+        int year_month_key
+        varchar analysis_period
+    }
+    fact_economic_indicators_monthly {
+        int date_key PK, FK
+        float inflation_12m_pct
+        float key_interest_rate_pct
+        float unemployment_rate_pct
+        float isk_per_eur
+        float isk_per_usd
+        float house_price_index
+        float wage_index
+    }
+    fact_gdp_quarterly {
+        int date_key PK, FK
+        float gdp_growth_yoy_pct
+    }
 
-### Gold Dimension Pipeline
-![Gold Dimension Pipeline](assets/gold_dim_pipeline.png)
+    dim_date ||--o{ fact_economic_indicators_monthly : date_key
+    dim_date ||--o{ fact_gdp_quarterly : date_key
+```
 
-### Gold Fact Pipeline
-![Gold Fact Pipeline](assets/gold_fact_pipeline.png)
+Designed after Kimball's dimensional modelling rules:
 
-*30-second wait activities are included between notebook executions to respect Microsoft Fabric Trial capacity limits.*
+| Rule | How it's applied |
+|---|---|
+| One grain per fact table | Monthly indicators and quarterly GDP are separate periodic snapshots, so GDP is never placed on a monthly row |
+| Dense facts as columns | Every indicator is published every period, so each is a column named with its unit (`_pct`, `isk_per_`, `_index`) rather than rows in a generic value column |
+| Conformed date dimension | One day-grain `dim_date` serves both facts and is the model's date table; facts join on the first day of their month or quarter |
+| Only real dimensions | Source and units belong to the indicator, not to each row, so they're documented on the columns and measures instead of in single-row dimensions |
+| Non-additive facts | Rates and indexes are averaged over time, never summed; peaks and lows use `MAX` and `MIN` |
 
-</div>
+Percentages are stored as percentage points (9.25 = 9.25%). A NULL means the source hasn't published that month yet.
+
+---
+
+## Semantic Model
+
+`sm_iceland_economy` is a Direct Lake on OneLake model on the three `gold` tables with 30 measures, built to DP-600 practice:
+
+- **Star schema** with many-to-one, single-direction relationships from each fact to `dim_date`, which is marked as the date table.
+- **Explicit measures only.** Fact columns and keys are hidden, so reports use the measures and their formats.
+- **Defined in code.** [`measures_1_base.tmdl`](semantic_model/measures_1_base.tmdl) and [`measures_2_derived.tmdl`](semantic_model/measures_2_derived.tmdl) are TMDL scripts that create every measure with its format string, display folder and description (two steps, because derived measures reference the base measures); [`relationships.tmdl`](semantic_model/relationships.tmdl) adds the relationships if the model didn't detect them.
+
+| Folder | Measures | Definition |
+|---|---|---|
+| Indicators | `Inflation (12-Month)`, `Key Interest Rate`, `Unemployment Rate`, `GDP Growth (YoY)`, `ISK/EUR Rate`, `ISK/USD Rate`, `House Price Index`, `Wage Index` | The indicator's value, as defined in [Data](#data) |
+| Latest | `… (Latest)` | Value in the latest month or quarter with data, within the current filters |
+| Latest | `… (Latest Month)`, `GDP Growth (Latest Quarter)` | That period as text, for example `Sep 2026` or `Q2 2026`, for KPI cards |
+| Latest | `Wage Index (Latest Text)` | The latest wage index formatted as text, because the card visual abbreviates large numbers (1157.7 as 1.2K) |
+| Period Comparison | `Peak Inflation`, `Peak Key Interest Rate`, `Peak Unemployment Rate`, `Peak ISK/EUR`, `Lowest GDP Growth` | Highest or lowest value in the selected period |
+
+![Semantic model](assets/semantic_model.png)
+
+**Security note.** The SQL roles in [`04_security.sql`](warehouse/04_security.sql) protect the warehouse. A Direct Lake on OneLake model reads the Delta files directly and does not apply them, so access to the model and report is controlled with workspace roles and model permissions.
+
+---
+
+## Design Decisions
+
+| Decision | Why |
+|---|---|
+| Bronze and Silver in a lakehouse, Gold in a warehouse | Spark suits API ingestion and Delta merges; T-SQL suits a governed star schema with transactions, and the warehouse reads Silver in place |
+| Direct Lake on OneLake, not Import or DirectQuery | No refresh step and no DirectQuery fallback: the model reads committed Gold data, so the quality gate decides what reports show |
+| Quality gate with rollback in `gold.load_gold` | With Direct Lake a bad commit is visible immediately, so checks run inside the load transaction and a failure leaves Gold unchanged |
+| Day-grain `dim_date` for monthly and quarterly facts | One conformed date table keeps time intelligence and the period filter simple; facts join on the first day of their period |
+| One fact table per grain | GDP is quarterly and the other indicators are monthly, so GDP is not repeated on monthly rows |
+| Incremental load with a lookback window | Sources revise recent values; reading from a watermark minus a lookback and keeping the latest version in Silver picks up revisions without reloading everything |
+| One workspace and one lakehouse with schemas | Three-part names in the warehouse work within a workspace, and notebooks in one pipeline session need the same default lakehouse |
+| Measures in TMDL scripts in Git | The model's logic is reviewable and can be re-applied; fact columns are hidden so reports use the measures |
+
+---
+
+## Data Validation
+
+Beyond the checks in the quality gate, the latest loaded values were compared by hand with the sources:
+
+| Indicator | Checked against |
+|---|---|
+| Inflation, latest month | Statistics Iceland's consumer price index release |
+| Key interest rate | The Monetary Policy Committee's latest statement |
+| Unemployment rate | Statistics Iceland's PX-Web table for the Labour Force Survey |
+| ISK/EUR and ISK/USD | The Central Bank's published daily rates (the Silver table holds the daily rates; Gold stores their monthly average) |
+| Wage index | The month-on-month and annual changes in Statistics Iceland's release |
+
+GDP growth and the house price index were not compared by hand; they are loaded the same way as the checked Statistics Iceland indicators and pass the quality gate.
+
+---
+
+## Limitations and Next Steps
+
+- **No shrunken month dimension.** Month-level slicing uses `dim_date`; a `dim_month` would be the next modelling step.
+- **Period filter only.** A year-range slicer would let users compare any two periods.
+- **Model security.** Access to the model relies on workspace roles; row-level security is not configured.
+
+---
 
 ## Project Structure
 
 ```text
-├── notebooks/                   # PySpark & Spark SQL Transformation Logic
-│   ├── bronze/                  # API Ingestion
-│   ├── silver/                  # Cleaning & Normalization
-│   ├── gold/                    # Star Schema Dimensional Modeling
-│   └── quality/                 # Great Expectations Validation
-├── pipelines/                   # Data Factory Pipeline Definitions (JSON)
-│   ├── master_pipeline.json     # Full end-to-end orchestration
-│   ├── bronze_pipeline.json
-│   ├── silver_pipeline.json
-│   ├── gold_dim_pipeline.json
-│   └── gold_fact_pipeline.json
-├── semantic_model/              # Power BI Direct Lake Model
-│   └── measures.dax             # Calculated measures logic
-└── assets/                      # Dashboard screenshots & Diagrams
+├── notebooks/                          # Lakehouse: Bronze in PySpark, Silver in Spark SQL
+│   ├── bronze/                               # PySpark: API ingestion, full or incremental
+│   └── silver/                               # Spark SQL: CREATE TABLE IF NOT EXISTS + MERGE
+├── warehouse/                          # Warehouse (T-SQL)
+│   ├── 01_tables.sql                         # dim_date, two fact tables, dq_logs
+│   ├── 02_load_procedures.sql                # MERGE procedure per table
+│   ├── 03_validate_and_run.sql               # Quality gate and gold.load_gold
+│   ├── 04_security.sql                       # Least-privilege roles
+│   └── 05_monitoring.sql                     # Load history and failures
+├── semantic_model/                     # TMDL scripts: measures, relationships
+├── report/                             # Power BI report theme
+└── assets/                             # Screenshots
 ```
 
 ---
 
-## Notebooks
+## Naming
 
-```
-notebooks/
-├── bronze/
-│   ├── bronze_setup.ipynb                    # Initialize Lakehouse schema and folder structure
-│   ├── bronze_central_bank.ipynb             # Ingest policy rate, CPI, ISK/EUR (GroupID 1, 3, 9)
-│   └── bronze_statistics_iceland.ipynb       # Ingest GDP, HPI, Wage Index via PX-Web API
-├── silver/
-│   ├── silver_central_bank.ipynb             # Parse and normalize policy_rate, cpi, iskeur
-│   ├── silver_statistics_gdp.ipynb           # Parse quarterly GDP, assign to quarter-start month
-│   └── silver_statistics_monthly.ipynb       # Parse monthly HPI and Wage Index period strings
-├── gold/
-│   ├── gold_fact_monthly_economics.ipynb     # UNION ALL Silver sources into narrow fact table (MERGE)
-│   ├── gold_dim_date.ipynb                   # Date dimension with crisis_period labels (1990–2030)
-│   ├── gold_dim_indicator.ipynb              # Indicator metadata — codes, categories, units (SCD Type 0)
-│   ├── gold_dim_source.ipynb                 # Source metadata — API details and update frequency (SCD Type 0)
-│   └── gold_dim_geography.ipynb              # Geography dimension — country, region, currency
-└── quality/
-    └── validate_fact_monthly_economics.ipynb # Great Expectations validation — blocks refresh on failure
-```
+Fabric items use a type prefix and snake_case; warehouse objects use medallion schemas and `dim_` / `fact_` tables.
 
----
-
-## Gold Layer — Star Schema
-
-```mermaid
-erDiagram
-    fact_monthly_economics {
-        int month_key
-        int date_key FK
-        int indicator_key FK
-        int source_key FK
-        int geography_key FK
-        double value
-    }
-    dim_date {
-        int date_key PK
-        date full_date
-        int year_num
-        int month_num
-        string crisis_period
-    }
-    dim_indicator {
-        int indicator_key PK
-        string indicator_code
-        string indicator_name
-        string unit
-    }
-    dim_source {
-        int source_key PK
-        string source_code
-        string source_name
-    }
-    dim_geography {
-        int geography_key PK
-        string country_iso_code
-        string country_name
-    }
-
-    dim_date ||--o{ fact_monthly_economics : "date_key"
-    dim_indicator ||--o{ fact_monthly_economics : "indicator_key"
-    dim_source ||--o{ fact_monthly_economics : "source_key"
-    dim_geography ||--o{ fact_monthly_economics : "geography_key"
-```
-
-### `gold.fact_monthly_economics`
-
-| Column | Type | Description |
-|---|---|---|
-| `date_key` | int | FK to dim_date (YYYYMMDD) |
-| `month_key` | int | YYYYMM |
-| `indicator_key` | int | FK to dim_indicator |
-| `source_key` | int | FK to dim_source |
-| `geography_key` | int | FK to dim_geography |
-| `value` | double | Indicator value |
-| `is_estimated` | bool | Estimation flag |
-
-### `gold.dim_indicator`
-
-| indicator_code | Description | Unit | Source |
-|---|---|---|---|
-| `policy_rate` | Central Bank Policy Rate | Percent (%) | Seðlabanki |
-| `cpi` | CPI Year-on-Year Inflation | Percent (%) | Seðlabanki |
-| `iskeur` | ISK/EUR Exchange Rate | ISK per 1 EUR | Seðlabanki |
-| `gdp_yoy_growth` | GDP Year-on-Year Growth | Percent (%) | Hagstofa |
-| `hpi` | House Price Index | Index (Mar 2000=100) | Hagstofa |
-| `wage_index` | Wage Index | Index (Dec 1988=100) | Hagstofa |
-| `real_wage_index` | Real Wage Index (CPI-deflated) | Index (CPI-deflated) | Derived |
-| `affordability_ratio` | Affordability Ratio (HPI ÷ Wage Index) | Ratio | Derived |
-
-### `gold.dim_date`
-
-Standard daily date spine (1980–2030) with full calendar attributes.
-
-`crisis_period` labels each date as `Banking Collapse` (2008–2011), `Pandemic` (2020–2021), `Inflation & Volcanic` (2022–2026), or `Normal`. `is_crisis_period` boolean flag. Used in Power BI for shaded crisis bands without DAX complexity.
-
----
-
-## Semantic Model (Direct Lake)
-
-A **Direct Lake** semantic model connects Power BI directly to the Gold Delta tables in OneLake — import-mode performance without a data copy.
-
-<div align="center">
-
-![Semantic Model Relationship Diagram](assets/semantic_model.png)
-
-</div>
-
-The DAX measures used in the dashboard can be found in `semantic_model/measures.dax`.
-
----
-
-## Architecture Decisions
-
-| Decision | Rationale |
+| Item | Name |
 |---|---|
-| **Official sources only** | All data from Seðlabanki and Hagstofa. No third-party dependencies that could silently break. |
-| **Direct Lake Connectivity** | Import-mode performance with DirectQuery-mode freshness — no data copy required. |
-| **Idempotent loads (`MERGE INTO`)** | Every Silver and Gold notebook is safe to re-run without duplicating data. |
-| **UNION ALL in gold fact** | One CTE per metric, joined to dim_indicator by code. Adding a new indicator is one extra `UNION ALL` block. |
-| **GDP at quarter-start month** | Quarterly values map to the first month of their quarter (Q1→Jan). Accurate grain — no value duplication across 3 months. |
-| **HPI + Wages in one silver table** | Both are monthly, share identical schema, and come from the same bronze table. Single notebook, single Delta table. |
-| **Decoupled quality layer** | Validation logic isolated in `/quality/`, keeping Gold transformation and GX concerns separate. |
-| **Gatekeeper pattern** | Semantic Model refresh is conditional on GX success. Failures halt before unverified data reaches the dashboard. |
-| **Crisis period in dim_date** | `crisis_period` and `is_crisis_period` columns enable Power BI shaded bands with no DAX required. |
-| **Wide date spine** | `dim_date` spans 1990–2030, supporting future backfill without a schema change. |
-| **Derived indicators in pipeline** | `real_wage_index` (Wage Index ÷ CPI index level × 100) and `affordability_ratio` (HPI ÷ Wage Index) pre-computed in the Gold fact notebook. Keeps DAX simple and avoids divergence between visuals. |
-
----
-
-## Tech Stack
-
-| Category | Technology |
-|---|---|
-| **Data Platform** | Microsoft Fabric — Lakehouse (OneLake / Delta), Data Factory, Power BI |
-| **Processing** | PySpark, Spark SQL |
-| **Data Quality** | Great Expectations 1.17.0 |
-| **Ingestion** | `requests`, `pandas`, `xml.etree.ElementTree` |
+| Lakehouse (Bronze, Silver) | `lh_iceland_economy` |
+| Warehouse (Gold) | `wh_iceland_economy` |
+| Notebooks | `nb_bronze_*`, `nb_silver_*` |
+| Pipeline | `pl_load_iceland_economy` |
+| Semantic model | `sm_iceland_economy` |
+| Report | `rpt_iceland_economy` |
 
 ---
 
 ## How to Run
 
-**Prerequisites:** A Microsoft Fabric workspace with F2+ capacity or an active Trial capacity.
+Requires a Fabric workspace on a trial or paid capacity.
 
-1. **Initialize** — Run `notebooks/bronze/bronze_setup.ipynb` to create the Lakehouse schema and folder structure.
-2. **Import Pipelines** — Use the JSON definitions in the `/pipelines` folder to recreate the Data Factory flow, or reference them to manually configure your activities.
-3. **Validate** — Confirm `quality/validate_fact_monthly_economics.ipynb` correctly references your Gold tables.
-4. **Execute** — Trigger the **Master Pipeline** to run the full end-to-end flow.
-
-### Pipeline Run Order
-
-1. `bronze_setup`
-2. `bronze_central_bank`
-3. `bronze_statistics_iceland`
-4. `silver_central_bank`
-5. `silver_statistics_gdp`
-6. `silver_statistics_monthly`
-7. `gold_dim_date`
-8. `gold_dim_indicator`
-9. `gold_dim_source`
-10. `gold_dim_geography`
-11. `gold_fact_monthly_economics`
-12. `validate_fact_monthly_economics`
+1. Create a lakehouse `lh_iceland_economy` with **Lakehouse schemas** enabled. Import the six notebooks from `notebooks/` and set the lakehouse as each one's default.
+2. In **Workspace settings → Data Engineering/Science → Spark settings → High concurrency**, turn on **For pipeline running multiple notebooks**.
+3. Create the pipeline `pl_load_iceland_economy` with the six notebook activities as in [Pipeline](#pipeline), each with the session tag `iceland_economy`. Add a pipeline parameter `load_mode` (String, default `incremental`) and pass it to both Bronze activities as the base parameter `load_mode`. Run it; the first run loads the full history because Bronze is empty.
+4. Create a warehouse `wh_iceland_economy` in the same workspace and add the lakehouse in its Explorer. Run `warehouse/01`–`04`, then add the stored procedure activity `gold.load_gold` to the pipeline, after the three Silver notebooks, and run the pipeline again.
+5. Create a Direct Lake semantic model `sm_iceland_economy` on `dim_date`, `fact_economic_indicators_monthly` and `fact_gdp_quarterly`. In TMDL view, apply `semantic_model/relationships.tmdl` (the relationships are not detected from the warehouse keys), then `measures_1_base.tmdl` and `measures_2_derived.tmdl`, in that order. Mark `dim_date` as the date table and hide the fact columns. Build the report `rpt_iceland_economy` on it.

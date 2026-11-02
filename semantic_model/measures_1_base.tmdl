@@ -1,0 +1,67 @@
+// ================================================================
+// Iceland Economic Analytics: measures for sm_iceland_economy (TMDL)
+// Part 1 of 2: base measures (Indicators folder).
+//
+// How to apply: open the semantic model in TMDL view (Power BI Desktop
+// or the web), open a new tab, paste this file and select Apply.
+// Then apply measures_2_derived.tmdl the same way. Two scripts are
+// needed because the derived measures reference these base measures
+// and the editor validates references before they exist.
+// Re-running is safe (createOrReplace).
+//
+// Percentages are stored as percentage points (9.25 = 9.25%) and
+// divided by 100, so they format as percentages.
+// ================================================================
+createOrReplace
+
+	ref table fact_economic_indicators_monthly
+
+		/// Consumer price index, 12-month change, as published by the Central Bank of Iceland.
+		measure 'Inflation (12-Month)' =
+				DIVIDE(AVERAGE(fact_economic_indicators_monthly[inflation_12m_pct]), 100)
+			formatString: 0.00%
+			displayFolder: Indicators
+
+		/// Central Bank of Iceland key interest rate (7-day term deposits), last value in the month, % per year.
+		measure 'Key Interest Rate' =
+				DIVIDE(AVERAGE(fact_economic_indicators_monthly[key_interest_rate_pct]), 100)
+			formatString: 0.00%
+			displayFolder: Indicators
+
+		/// Unemployment rate from the Statistics Iceland Labour Force Survey, monthly trend.
+		measure 'Unemployment Rate' =
+				DIVIDE(AVERAGE(fact_economic_indicators_monthly[unemployment_rate_pct]), 100)
+			formatString: 0.00%
+			displayFolder: Indicators
+
+		/// ISK per 1 EUR, monthly average of the Central Bank of Iceland's daily mid rates.
+		measure 'ISK/EUR Rate' =
+				AVERAGE(fact_economic_indicators_monthly[isk_per_eur])
+			formatString: #,0.0
+			displayFolder: Indicators
+
+		/// ISK per 1 USD, monthly average of the Central Bank of Iceland's daily mid rates.
+		measure 'ISK/USD Rate' =
+				AVERAGE(fact_economic_indicators_monthly[isk_per_usd])
+			formatString: #,0.0
+			displayFolder: Indicators
+
+		/// Market price index of residential housing, whole country, Statistics Iceland.
+		measure 'House Price Index' =
+				AVERAGE(fact_economic_indicators_monthly[house_price_index])
+			formatString: #,0.0
+			displayFolder: Indicators
+
+		/// Wage index (index value), monthly, Statistics Iceland.
+		measure 'Wage Index' =
+				AVERAGE(fact_economic_indicators_monthly[wage_index])
+			formatString: #,0.0
+			displayFolder: Indicators
+
+	ref table fact_gdp_quarterly
+
+		/// Gross domestic product, annual change by quarter (change from the same quarter a year earlier), Statistics Iceland.
+		measure 'GDP Growth (YoY)' =
+				DIVIDE(AVERAGE(fact_gdp_quarterly[gdp_growth_yoy_pct]), 100)
+			formatString: 0.00%
+			displayFolder: Indicators
