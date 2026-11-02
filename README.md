@@ -70,7 +70,7 @@ flowchart LR
 | Bronze | Lakehouse | PySpark: raw API responses, stored as-is |
 | Silver | Lakehouse | Spark SQL: typed, deduplicated Delta tables, loaded with `MERGE` |
 | Gold | Warehouse | T-SQL: Kimball star schema: one conformed date dimension, one fact table per grain; reads Silver in place with three-part names |
-| Semantic model | Direct Lake | DAX measures, prepared for AI |
+| Semantic model | Direct Lake | 30 DAX measures, defined in TMDL |
 | Consumption | Power BI | Measures in the report |
 
 This is Microsoft's [Pattern 2](https://learn.microsoft.com/fabric/onelake/onelake-medallion-lakehouse-architecture#deployment-model): Bronze and Silver in a lakehouse, Gold in a warehouse. Microsoft also suggests a separate workspace per layer for governance. Here everything is in one workspace and Bronze and Silver are schemas in one lakehouse, for two reasons: the warehouse reads Silver with three-part names, which work within a workspace, and the pipeline's notebooks can share one Spark session only when they have the same default lakehouse.
@@ -207,8 +207,11 @@ Beyond the checks in the quality gate, the latest loaded values were compared by
 | Unemployment rate | Statistics Iceland's PX-Web table for the Labour Force Survey |
 | ISK/EUR and ISK/USD | The Central Bank's published daily rates (the Silver table holds the daily rates; Gold stores their monthly average) |
 | Wage index | The month-on-month and annual changes in Statistics Iceland's release |
+| GDP growth, last four quarters | Statistics Iceland's PX-Web table THJ01601 (year-on-year change, total GDP) |
 
-GDP growth and the house price index were not compared by hand; they are loaded the same way as the checked Statistics Iceland indicators and pass the quality gate.
+The house price index was not compared by hand; it is loaded the same way as the checked Statistics Iceland indicators and passes the quality gate.
+
+A manual check of Bronze found no unparseable dates and no empty values in the Central Bank, GDP or monthly Statistics Iceland data. Bronze holds the full Central Bank dataset (35 series); Silver keeps the four the model uses.
 
 ---
 
@@ -217,6 +220,7 @@ GDP growth and the house price index were not compared by hand; they are loaded 
 - **No shrunken month dimension.** Month-level slicing uses `dim_date`; a `dim_month` would be the next modelling step.
 - **Period filter only.** A year-range slicer would let users compare any two periods.
 - **Model security.** Access to the model relies on workspace roles; row-level security is not configured.
+- **Quality checks only in Gold.** Silver deduplicates and drops invalid rows without counting them, and the Spark transformations have no unit tests.
 
 ---
 
