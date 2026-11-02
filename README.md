@@ -208,8 +208,9 @@ Beyond the checks in the quality gate, the latest loaded values were compared by
 | ISK/EUR and ISK/USD | The Central Bank's published daily rates (the Silver table holds the daily rates; Gold stores their monthly average) |
 | Wage index | The month-on-month and annual changes in Statistics Iceland's release |
 | GDP growth, last four quarters | Statistics Iceland's PX-Web table THJ01601 (year-on-year change, total GDP) |
+| House price index, latest month | Statistics Iceland's PX-Web table VIS01106 (whole country) |
 
-The house price index was not compared by hand; it is loaded the same way as the checked Statistics Iceland indicators and passes the quality gate.
+The latest-value measures were reconciled with the Gold tables: a DAX query and a T-SQL query return the same latest value for all eight indicators.
 
 A manual check of Bronze found no unparseable dates and no empty values in the Central Bank, GDP or monthly Statistics Iceland data. Bronze holds the full Central Bank dataset (35 series); Silver keeps the four the model uses.
 
