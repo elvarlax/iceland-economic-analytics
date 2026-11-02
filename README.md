@@ -7,7 +7,7 @@ A portfolio project that follows the skill areas of **DP-600** (Fabric Analytics
 | Area | Where |
 |---|---|
 | API ingestion (full and incremental) and Spark transformations | [`notebooks/`](notebooks) |
-| Orchestration: pipeline DAG with shared Spark session | [Pipeline](#pipeline) |
+| Orchestration: pipeline DAG with shared Spark session | [Pipeline](#pipeline), [`pipeline/`](pipeline/) |
 | Star schema, T-SQL load procedures, transactions | [`warehouse/01–03`](warehouse) |
 | Data quality gate with rollback | [`warehouse/03_validate_and_run.sql`](warehouse/03_validate_and_run.sql) |
 | Least-privilege security and monitoring | [`warehouse/04_security.sql`](warehouse/04_security.sql), [`05_monitoring.sql`](warehouse/05_monitoring.sql) |
